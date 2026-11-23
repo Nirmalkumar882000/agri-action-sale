@@ -1,0 +1,1237 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+  Role,
+  Language,
+  Seller,
+  Buyer,
+  Product,
+  InwardLot,
+  AuctionTransaction,
+  OnlineAuction,
+  OnlineBid,
+  Employee,
+  AttendanceRecord,
+  CashAdvance,
+  PayrollRecord,
+  MandiProfile,
+  NotificationItem,
+} from '../types';
+import {
+  INITIAL_MANDI_PROFILE,
+  INITIAL_SELLERS,
+  INITIAL_BUYERS,
+  INITIAL_PRODUCTS,
+  INITIAL_INWARD_LOTS,
+  INITIAL_AUCTION_TRANSACTIONS,
+  INITIAL_ONLINE_AUCTIONS,
+  INITIAL_EMPLOYEES,
+  INITIAL_ATTENDANCE,
+  INITIAL_ADVANCES,
+} from '../utils/mockData';
+import { ROLE_DEFAULT_PERMISSIONS, canAccessRoute } from '../utils/rbac';
+import { translations } from '../utils/i18n';
+
+interface AppContextType {
+  // Theme & Appearance
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+
+  // Loader & Progress
+  isLoading: boolean;
+  loadingMessage: string;
+
+  // Localization & Role
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+  activeRole: Role;
+  setActiveRole: (role: Role) => void;
+  activeBranch: string;
+  setActiveBranch: (branch: string) => void;
+  currentUser: Employee;
+  hasPermission: (route: string) => boolean;
+
+  // Profile
+  profile: MandiProfile;
+  updateProfile: (profile: MandiProfile) => void;
+
+  // Sellers (Banana Farmers)
+  sellers: Seller[];
+  addSeller: (seller: Omit<Seller, 'id' | 'createdAt'>) => Seller;
+  updateSeller: (seller: Seller) => void;
+
+  // Buyers (Wholesale Traders)
+  buyers: Buyer[];
+  addBuyer: (buyer: Omit<Buyer, 'id' | 'createdAt'>) => Buyer;
+  updateBuyer: (buyer: Buyer) => void;
+
+  // Products (Banana & Leaves Varieties)
+  products: Product[];
+  addProduct: (product: Omit<Product, 'id'>) => Product;
+  updateProduct: (product: Product) => void;
+  deleteProduct: (productId: string) => void;
+
+  // Inward Lots
+  lots: InwardLot[];
+  addInwardLot: (lot: Omit<InwardLot, 'id'>) => InwardLot;
+  updateLotStatus: (lotId: string, status: InwardLot['status'], shed?: string) => void;
+
+  // Mandi Floor Auction Engine
+  transactions: AuctionTransaction[];
+  completeFloorAuctionLot: (payload: {
+    lot: InwardLot;
+    weighedQuantity: number;
+    winningRate: number;
+    buyer: Buyer;
+  }) => AuctionTransaction;
+
+  // Online Digital Auction Engine
+  onlineAuctions: OnlineAuction[];
+  createOnlineAuction: (payload: {
+    lot: InwardLot;
+    reservePrice: number;
+    durationMinutes: number;
+  }) => void;
+  placeOnlineBid: (auctionId: string, amount: number, bidder: Buyer) => void;
+  toggleAutoBidding: (auctionId: string) => void;
+  completeDigitalAuctionLot: (auctionId: string) => AuctionTransaction | null;
+
+  // Settlements & Payments
+  settleFarmerPayout: (sellerId: string, amount?: number, paymentMode?: string) => void;
+  recordBuyerPayment: (buyerId: string, amount: number, paymentMode?: string) => void;
+
+  // Workforce & Staff
+  employees: Employee[];
+  addEmployee: (emp: Omit<Employee, 'id'>) => void;
+  updateEmployee: (emp: Employee) => void;
+  resetEmployeePassword: (empId: string, newPass: string) => void;
+
+  // Attendance
+  attendance: AttendanceRecord[];
+  markAttendance: (record: Omit<AttendanceRecord, 'id' | 'updatedAt'>) => void;
+  markAllPresentForDate: (date: string, branch: string) => void;
+
+  // Staff Advances
+  advances: CashAdvance[];
+  recordCashAdvance: (advance: Omit<CashAdvance, 'id' | 'voucherNumber'>) => CashAdvance;
+
+  // Payroll
+  payrolls: PayrollRecord[];
+  generateMonthlyPayroll: (monthStr: string) => PayrollRecord[];
+  processSalaryPayment: (payrollId: string, paymentMethod: string, remarks?: string) => void;
+
+  // Notifications
+  notifications: NotificationItem[];
+  addNotification: (title: string, message: string, type?: NotificationItem['type']) => void;
+  markNotificationRead: (id: string) => void;
+
+  // System
+  resetAllDemoData: () => void;
+  loadDemoData: () => void;
+  clearAllData: () => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+function getStorage<T>(key: string, initial: T): T {
+  try {
+    const val = localStorage.getItem(key);
+    return val ? JSON.parse(val) : initial;
+  } catch {
+    return initial;
+  }
+}
+
+function setStorage<T>(key: string, val: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch (e) {
+    console.error('Storage write error', e);
+  }
+}
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Theme state
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('kvs_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    } catch { }
+    return 'light';
+  });
+
+  // Loader state
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
+
+  // Sync theme with DOM and localStorage
+  useEffect(() => {
+    try {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      localStorage.setItem('kvs_theme', theme);
+    } catch (e) {
+      console.error('Theme sync error', e);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setThemeState(prev => (prev === 'light' ? 'dark' : 'light'));
+  };
+
+  const setTheme = (t: 'light' | 'dark') => {
+    setThemeState(t);
+  };
+
+  const [language, setLanguageState] = useState<Language>(() => getStorage('kvs_lang', 'ta'));
+  const [activeRole, setActiveRoleState] = useState<Role>(() => getStorage('kvs_role', 'Manager'));
+  const [activeBranch, setActiveBranchState] = useState<string>(() =>
+    getStorage('kvs_branch', INITIAL_MANDI_PROFILE.activeBranch)
+  );
+
+  const [profile, setProfileState] = useState<MandiProfile>(() =>
+    getStorage('kvs_profile', INITIAL_MANDI_PROFILE)
+  );
+  const [sellers, setSellersState] = useState<Seller[]>(() =>
+    getStorage('kvs_sellers', INITIAL_SELLERS)
+  );
+  const [buyers, setBuyersState] = useState<Buyer[]>(() =>
+    getStorage('kvs_buyers', INITIAL_BUYERS)
+  );
+  const [products, setProductsState] = useState<Product[]>(() =>
+    getStorage('kvs_products', INITIAL_PRODUCTS)
+  );
+  const [lots, setLotsState] = useState<InwardLot[]>(() =>
+    getStorage('kvs_lots', INITIAL_INWARD_LOTS)
+  );
+  const [transactions, setTransactionsState] = useState<AuctionTransaction[]>(() =>
+    getStorage('kvs_txs', INITIAL_AUCTION_TRANSACTIONS)
+  );
+  const [onlineAuctions, setOnlineAuctionsState] = useState<OnlineAuction[]>(() =>
+    getStorage('kvs_online_auctions', INITIAL_ONLINE_AUCTIONS)
+  );
+  const [employees, setEmployeesState] = useState<Employee[]>(() =>
+    getStorage('kvs_employees', INITIAL_EMPLOYEES)
+  );
+  const [attendance, setAttendanceState] = useState<AttendanceRecord[]>(() =>
+    getStorage('kvs_attendance', INITIAL_ATTENDANCE)
+  );
+  const [advances, setAdvancesState] = useState<CashAdvance[]>(() =>
+    getStorage('kvs_advances', INITIAL_ADVANCES)
+  );
+  const [payrolls, setPayrollsState] = useState<PayrollRecord[]>(() =>
+    getStorage('kvs_payrolls', [])
+  );
+  const [notifications, setNotificationsState] = useState<NotificationItem[]>(() =>
+    getStorage('kvs_notifications', [
+      {
+        id: 'n-1',
+        title: 'KVS Mandi Operating Desk',
+        message: 'Floor auction calling engine initialized for Banana & Leaves trading.',
+        type: 'info',
+        timestamp: '08:00 AM',
+        read: false,
+      },
+    ])
+  );
+
+  const setLanguage = (lang: Language) => {
+    setLanguageState(lang);
+    setStorage('kvs_lang', lang);
+  };
+
+  const setActiveRole = (role: Role) => {
+    setActiveRoleState(role);
+    setStorage('kvs_role', role);
+  };
+
+  const setActiveBranch = (branch: string) => {
+    setActiveBranchState(branch);
+    setStorage('kvs_branch', branch);
+  };
+
+  const updateProfile = (p: MandiProfile) => {
+    setProfileState(p);
+    setStorage('kvs_profile', p);
+    addNotification('Company Profile Updated', 'Mandi details and statutory rates updated.', 'success');
+  };
+
+  const setSellers = (data: Seller[]) => {
+    setSellersState(data);
+    setStorage('kvs_sellers', data);
+  };
+
+  const setBuyers = (data: Buyer[]) => {
+    setBuyersState(data);
+    setStorage('kvs_buyers', data);
+  };
+
+  const setProducts = (data: Product[]) => {
+    setProductsState(data);
+    setStorage('kvs_products', data);
+  };
+
+  const setLots = (data: InwardLot[]) => {
+    setLotsState(data);
+    setStorage('kvs_lots', data);
+  };
+
+  const setTransactions = (data: AuctionTransaction[]) => {
+    setTransactionsState(data);
+    setStorage('kvs_txs', data);
+  };
+
+  const setOnlineAuctions = (data: OnlineAuction[] | ((prev: OnlineAuction[]) => OnlineAuction[])) => {
+    setOnlineAuctionsState(prev => {
+      const next = typeof data === 'function' ? data(prev) : data;
+      setStorage('kvs_online_auctions', next);
+      return next;
+    });
+  };
+
+  const setEmployees = (data: Employee[]) => {
+    setEmployeesState(data);
+    setStorage('kvs_employees', data);
+  };
+
+  const setAttendance = (data: AttendanceRecord[]) => {
+    setAttendanceState(data);
+    setStorage('kvs_attendance', data);
+  };
+
+  const setAdvances = (data: CashAdvance[]) => {
+    setAdvancesState(data);
+    setStorage('kvs_advances', data);
+  };
+
+  const setPayrolls = (data: PayrollRecord[]) => {
+    setPayrollsState(data);
+    setStorage('kvs_payrolls', data);
+  };
+
+  const setNotifications = (data: NotificationItem[]) => {
+    setNotificationsState(data);
+    setStorage('kvs_notifications', data);
+  };
+
+  const t = (key: string): string => {
+    return translations[language][key] || key;
+  };
+
+  const currentUser: Employee = employees.find(e => e.role === activeRole) || {
+    id: 'user-default',
+    code: 'EMP-001',
+    name: 'Active Mandi Operator',
+    mobile: '9842100000',
+    role: activeRole,
+    joiningDate: '2024-01-01',
+    salaryBasis: 'Monthly',
+    baseSalary: 30000,
+    overtimeRatePerHour: 150,
+    portalAccess: true,
+    permissions: ROLE_DEFAULT_PERMISSIONS[activeRole],
+    branches: [activeBranch],
+  };
+
+  const hasPermission = (routePath: string): boolean => {
+    const userPerms = currentUser.permissions || ROLE_DEFAULT_PERMISSIONS[activeRole];
+    return canAccessRoute(routePath, userPerms);
+  };
+
+  const addNotification = (title: string, message: string, type: NotificationItem['type'] = 'info') => {
+    const item: NotificationItem = {
+      id: 'notif-' + Date.now(),
+      title,
+      message,
+      type,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      read: false,
+    };
+    setNotifications([item, ...notifications.slice(0, 19)]);
+  };
+
+  const markNotificationRead = (id: string) => {
+    setNotifications(notifications.map(n => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  // 1. Sellers Management
+  const addSeller = (data: Omit<Seller, 'id' | 'createdAt'>): Seller => {
+    const newSeller: Seller = {
+      ...data,
+      id: 's-' + (sellers.length + 1) + '-' + Date.now().toString().slice(-4),
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    setSellers([newSeller, ...sellers]);
+    addNotification('Farmer Onboarded', `${newSeller.name} (${newSeller.village}) registered.`, 'success');
+    return newSeller;
+  };
+
+  const updateSeller = (data: Seller) => {
+    setSellers(sellers.map(s => (s.id === data.id ? data : s)));
+  };
+
+  // 2. Buyers Management
+  const addBuyer = (data: Omit<Buyer, 'id' | 'createdAt'>): Buyer => {
+    const newBuyer: Buyer = {
+      ...data,
+      id: 'b-' + (buyers.length + 1) + '-' + Date.now().toString().slice(-4),
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    setBuyers([newBuyer, ...buyers]);
+    addNotification('Trader Registered', `${newBuyer.tradeName} (Paddle ${newBuyer.paddleNumber}) added.`, 'success');
+    return newBuyer;
+  };
+
+  const updateBuyer = (data: Buyer) => {
+    setBuyers(buyers.map(b => (b.id === data.id ? data : b)));
+  };
+
+  // 3. Products Management
+  const addProduct = (data: Omit<Product, 'id'>): Product => {
+    const newProduct: Product = {
+      ...data,
+      id: 'p-' + (products.length + 1),
+    };
+    setProducts([...products, newProduct]);
+    addNotification('Variety Registered', `${newProduct.name} rate benchmarked.`, 'success');
+    return newProduct;
+  };
+
+  const updateProduct = (data: Product) => {
+    setProducts(products.map(p => (p.id === data.id ? data : p)));
+  };
+
+  const deleteProduct = (productId: string) => {
+    setProducts(products.filter(p => p.id !== productId));
+    addNotification('Commodity Removed', 'Produce variety removed from catalog.', 'info');
+  };
+
+  // 4. Inward Produce Lots
+  const addInwardLot = (data: Omit<InwardLot, 'id'>): InwardLot => {
+    const newLot: InwardLot = {
+      ...data,
+      id: 'lot-' + (lots.length + 1) + '-' + Date.now().toString().slice(-4),
+    };
+    setLots([newLot, ...lots]);
+
+    setSellers(
+      sellers.map(s => {
+        if (s.id === newLot.sellerId) {
+          return {
+            ...s,
+            totalLotsCount: s.totalLotsCount + 1,
+            totalVolume: s.totalVolume + newLot.initialQuantity,
+          };
+        }
+        return s;
+      })
+    );
+
+    addNotification('Produce Inwarded', `${newLot.productName} (${newLot.initialQuantity} ${newLot.unit}) received.`, 'info');
+    return newLot;
+  };
+
+  const updateLotStatus = (lotId: string, status: InwardLot['status'], shed?: string) => {
+    setLots(lots.map(l => (l.id === lotId ? { ...l, status, ...(shed ? { shedLocation: shed } : {}) } : l)));
+  };
+
+  // 5. Floor Auction Completion & Instant KVS Chit Generation
+  const completeFloorAuctionLot = (payload: {
+    lot: InwardLot;
+    weighedQuantity: number;
+    winningRate: number;
+    buyer: Buyer;
+  }): AuctionTransaction => {
+    const { lot, weighedQuantity, winningRate, buyer } = payload;
+    const prod = products.find(p => p.id === lot.productId);
+
+    const grossAmount = weighedQuantity * winningRate;
+
+    // Specific Mandi Deductions matching real KVS receipt
+    const coolieAmount = prod?.coolieRatePerUnit || profile.defaultCooliePerUnit || 16.0;
+    const rentAmount = prod?.rentRatePerUnit || profile.defaultRentPerUnit || 60.0;
+    const magimaiAmount = prod?.magimaiRatePerUnit || profile.defaultMagimaiPerUnit || 1.0;
+    const commissionPercent = prod?.commissionPercent || profile.defaultCommissionPercent || 10.0;
+    const commissionAmount = Math.round((grossAmount * commissionPercent) / 100);
+
+    const totalDeductions = coolieAmount + rentAmount + magimaiAmount + commissionAmount;
+    const netFarmerPayable = Math.max(0, grossAmount - totalDeductions);
+
+    const buyerMarketFee = Math.round((grossAmount * (prod?.marketFeePercent || 1.0)) / 100);
+    const buyerTotalBilled = grossAmount + buyerMarketFee;
+
+    const now = new Date();
+    const billNumber = String(transactions.length + 54);
+    const chitNumber = `KVS-2026-${String(transactions.length + 54).padStart(3, '0')}`;
+    const dateFormatted = now.toLocaleDateString('en-GB'); // DD/MM/YYYY
+    const timeFormatted = now.toTimeString().slice(0, 8);
+
+    const tx: AuctionTransaction = {
+      id: 'tx-' + Date.now(),
+      billNumber,
+      chitNumber,
+      date: dateFormatted,
+      time: timeFormatted,
+      lotId: lot.id,
+      sellerId: lot.sellerId,
+      sellerName: lot.sellerName,
+      sellerVillage: lot.sellerVillage,
+      buyerId: buyer.id,
+      buyerName: buyer.name,
+      buyerTradeName: buyer.tradeName,
+      buyerPaddle: buyer.paddleNumber,
+      productId: lot.productId,
+      productName: lot.productName,
+      productNameTamil: lot.productNameTamil,
+      variety: lot.variety,
+      itemType: lot.itemType,
+      unit: lot.unit,
+      quantity: weighedQuantity,
+      ratePerUnit: winningRate,
+      grossAmount,
+      coolieAmount,
+      rentAmount,
+      magimaiAmount,
+      commissionPercent,
+      commissionAmount,
+      totalDeductions,
+      netFarmerPayable,
+      buyerMarketFee,
+      buyerTotalBilled,
+      type: 'ManualFloor',
+      gatePassIssued: true,
+    };
+
+    setTransactions([tx, ...transactions]);
+
+    // Deduct stock
+    const remaining = Math.max(0, lot.availableQuantity - weighedQuantity);
+    setLots(
+      lots.map(l =>
+        l.id === lot.id
+          ? {
+            ...l,
+            availableQuantity: remaining,
+            status: remaining === 0 ? 'Sold' : 'InAuction',
+          }
+          : l
+      )
+    );
+
+    // Update buyer outstanding dues
+    setBuyers(
+      buyers.map(b =>
+        b.id === buyer.id
+          ? {
+            ...b,
+            outstandingDues: b.outstandingDues + buyerTotalBilled,
+            status:
+              b.outstandingDues + buyerTotalBilled > b.depositAmount + b.creditLimit
+                ? 'Blocked'
+                : b.outstandingDues + buyerTotalBilled > (b.depositAmount + b.creditLimit) * 0.8
+                  ? 'Warning'
+                  : 'Active',
+          }
+          : b
+      )
+    );
+
+    // Update farmer balance
+    setSellers(
+      sellers.map(s =>
+        s.id === lot.sellerId
+          ? {
+            ...s,
+            payoutBalance: s.payoutBalance + netFarmerPayable,
+          }
+          : s
+      )
+    );
+
+    addNotification(
+      'Mandi Sale Completed',
+      `Bill #${billNumber}: ${lot.productName} awarded to ${buyer.tradeName} for ₹${grossAmount}`,
+      'success'
+    );
+
+    return tx;
+  };
+
+  // 6. Online Digital Auction
+  const createOnlineAuction = (payload: {
+    lot: InwardLot;
+    reservePrice: number;
+    durationMinutes: number;
+  }) => {
+    const { lot, reservePrice, durationMinutes } = payload;
+    const newAuction: OnlineAuction = {
+      id: 'oa-' + (onlineAuctions.length + 1) + '-' + Date.now().toString().slice(-4),
+      auctionCode: 'ONL-' + new Date().getFullYear() + '-' + String(onlineAuctions.length + 1).padStart(2, '0'),
+      lotId: lot.id,
+      productName: lot.productName,
+      productNameTamil: lot.productNameTamil,
+      variety: lot.variety,
+      varietyTamil: lot.varietyTamil,
+      itemType: lot.itemType,
+      sellerName: lot.sellerName,
+      sellerVillage: lot.sellerVillage,
+      quantity: lot.availableQuantity,
+      unit: lot.unit,
+      reservePrice,
+      currentHighestBid: reservePrice,
+      bidsCount: 0,
+      bidsHistory: [],
+      durationSeconds: durationMinutes * 60,
+      remainingSeconds: durationMinutes * 60,
+      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'Live',
+      antiSniped: false,
+      autoBidActive: true,
+    };
+
+    setOnlineAuctions([newAuction, ...onlineAuctions]);
+    updateLotStatus(lot.id, 'InAuction');
+    addNotification('Digital Auction Started', `${newAuction.productName} is now live for remote bidding!`, 'info');
+  };
+
+  const placeOnlineBid = (auctionId: string, amount: number, bidder: Buyer) => {
+    setOnlineAuctions((prev: OnlineAuction[]) =>
+      prev.map(a => {
+        if (a.id !== auctionId || a.status !== 'Live') return a;
+        if (amount <= a.currentHighestBid) return a;
+
+        const newBid: OnlineBid = {
+          id: 'bid-' + Date.now(),
+          bidderId: bidder.id,
+          bidderName: bidder.name,
+          bidderTradeName: bidder.tradeName,
+          paddleNumber: bidder.paddleNumber,
+          amount,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+
+        let extraSecs = 0;
+        let antiSniped = a.antiSniped;
+        if (a.remainingSeconds <= 30) {
+          extraSecs = 60;
+          antiSniped = true;
+        }
+
+        return {
+          ...a,
+          currentHighestBid: amount,
+          currentLeaderBuyerId: bidder.id,
+          currentLeaderBuyerName: bidder.tradeName,
+          currentLeaderPaddle: bidder.paddleNumber,
+          bidsCount: a.bidsCount + 1,
+          bidsHistory: [newBid, ...a.bidsHistory],
+          remainingSeconds: a.remainingSeconds + extraSecs,
+          antiSniped,
+        };
+      })
+    );
+  };
+
+  const toggleAutoBidding = (auctionId: string) => {
+    setOnlineAuctions((prev: OnlineAuction[]) =>
+      prev.map(a => (a.id === auctionId ? { ...a, autoBidActive: !a.autoBidActive } : a))
+    );
+  };
+
+  const completeDigitalAuctionLot = (auctionId: string): AuctionTransaction | null => {
+    const auction = onlineAuctions.find(a => a.id === auctionId);
+    if (!auction || !auction.currentLeaderBuyerId) return null;
+
+    const lot = lots.find(l => l.id === auction.lotId);
+    const buyer = buyers.find(b => b.id === auction.currentLeaderBuyerId);
+    if (!buyer || !lot) return null;
+
+    const prod = products.find(p => p.id === lot.productId);
+    const weighedQuantity = auction.quantity;
+    const winningRate = auction.currentHighestBid;
+    const grossAmount = weighedQuantity * winningRate;
+
+    const coolieAmount = prod?.coolieRatePerUnit || profile.defaultCooliePerUnit || 16.0;
+    const rentAmount = prod?.rentRatePerUnit || profile.defaultRentPerUnit || 60.0;
+    const magimaiAmount = prod?.magimaiRatePerUnit || profile.defaultMagimaiPerUnit || 1.0;
+    const commissionPercent = prod?.commissionPercent || profile.defaultCommissionPercent || 10.0;
+    const commissionAmount = Math.round((grossAmount * commissionPercent) / 100);
+
+    const totalDeductions = coolieAmount + rentAmount + magimaiAmount + commissionAmount;
+    const netFarmerPayable = Math.max(0, grossAmount - totalDeductions);
+
+    const buyerMarketFee = Math.round((grossAmount * (prod?.marketFeePercent || 1.0)) / 100);
+    const buyerTotalBilled = grossAmount + buyerMarketFee;
+
+    const now = new Date();
+    const billNumber = String(transactions.length + 54);
+    const chitNumber = `KVS-2026-${String(transactions.length + 54).padStart(3, '0')}`;
+    const dateFormatted = now.toLocaleDateString('en-GB');
+    const timeFormatted = now.toTimeString().slice(0, 8);
+
+    const tx: AuctionTransaction = {
+      id: 'tx-' + Date.now(),
+      billNumber,
+      chitNumber,
+      date: dateFormatted,
+      time: timeFormatted,
+      lotId: lot.id,
+      sellerId: lot.sellerId,
+      sellerName: lot.sellerName,
+      sellerVillage: lot.sellerVillage,
+      buyerId: buyer.id,
+      buyerName: buyer.name,
+      buyerTradeName: buyer.tradeName,
+      buyerPaddle: buyer.paddleNumber,
+      productId: lot.productId,
+      productName: lot.productName,
+      productNameTamil: lot.productNameTamil,
+      variety: lot.variety,
+      itemType: lot.itemType,
+      unit: lot.unit,
+      quantity: weighedQuantity,
+      ratePerUnit: winningRate,
+      grossAmount,
+      coolieAmount,
+      rentAmount,
+      magimaiAmount,
+      commissionPercent,
+      commissionAmount,
+      totalDeductions,
+      netFarmerPayable,
+      buyerMarketFee,
+      buyerTotalBilled,
+      type: 'DigitalOnline',
+      gatePassIssued: true,
+    };
+
+    setTransactions([tx, ...transactions]);
+
+    setOnlineAuctions((prev: OnlineAuction[]) =>
+      prev.map(a =>
+        a.id === auctionId
+          ? {
+            ...a,
+            status: 'Awarded' as const,
+            remainingSeconds: 0,
+            winningBid: winningRate,
+            winningBuyerName: buyer.tradeName,
+          }
+          : a
+      )
+    );
+
+    setLots(
+      lots.map(l =>
+        l.id === lot.id
+          ? {
+            ...l,
+            availableQuantity: 0,
+            status: 'Sold' as const,
+          }
+          : l
+      )
+    );
+
+    setBuyers(
+      buyers.map(b =>
+        b.id === buyer.id
+          ? {
+            ...b,
+            outstandingDues: b.outstandingDues + buyerTotalBilled,
+            status:
+              b.outstandingDues + buyerTotalBilled > b.depositAmount + b.creditLimit
+                ? ('Blocked' as const)
+                : b.outstandingDues + buyerTotalBilled > (b.depositAmount + b.creditLimit) * 0.8
+                  ? ('Warning' as const)
+                  : ('Active' as const),
+          }
+          : b
+      )
+    );
+
+    setSellers(
+      sellers.map(s =>
+        s.id === lot.sellerId
+          ? {
+            ...s,
+            payoutBalance: s.payoutBalance + netFarmerPayable,
+          }
+          : s
+      )
+    );
+
+    addNotification(
+      'Digital Auction Hammer Fell',
+      `Bill #${billNumber}: ${lot.productName} awarded to ${buyer.tradeName} for ₹${grossAmount.toLocaleString()}`,
+      'success'
+    );
+
+    return tx;
+  };
+
+  const settleFarmerPayout = (sellerId: string, amount?: number, paymentMode: string = 'Cash') => {
+    const seller = sellers.find(s => s.id === sellerId);
+    if (!seller) return;
+    const settleAmount = amount !== undefined ? amount : seller.payoutBalance;
+
+    setSellers(
+      sellers.map(s =>
+        s.id === sellerId
+          ? {
+            ...s,
+            payoutBalance: Math.max(0, s.payoutBalance - settleAmount),
+          }
+          : s
+      )
+    );
+
+    addNotification(
+      'Farmer Patti Settled',
+      `Paid ₹${settleAmount.toLocaleString('en-IN')} to ${seller.name} via ${paymentMode}. Balance settled.`,
+      'success'
+    );
+  };
+
+  const recordBuyerPayment = (buyerId: string, amount: number, paymentMode: string = 'Bank Transfer') => {
+    const buyer = buyers.find(b => b.id === buyerId);
+    if (!buyer) return;
+
+    setBuyers(
+      buyers.map(b =>
+        b.id === buyerId
+          ? {
+            ...b,
+            outstandingDues: Math.max(0, b.outstandingDues - amount),
+            status:
+              b.outstandingDues - amount > b.depositAmount + b.creditLimit
+                ? ('Blocked' as const)
+                : b.outstandingDues - amount > (b.depositAmount + b.creditLimit) * 0.8
+                  ? ('Warning' as const)
+                  : ('Active' as const),
+          }
+          : b
+      )
+    );
+
+    addNotification(
+      'Buyer Payment Received',
+      `Received ₹${amount.toLocaleString('en-IN')} from ${buyer.tradeName} via ${paymentMode}. Dues cleared.`,
+      'success'
+    );
+  };
+
+  // Real-time ticking
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setOnlineAuctions((prevAuctions: OnlineAuction[]) => {
+        let changed = false;
+        const next = prevAuctions.map(auction => {
+          if (auction.status !== 'Live') return auction;
+          changed = true;
+
+          const newRemaining = Math.max(0, auction.remainingSeconds - 1);
+          if (newRemaining === 0) {
+            const hasMetReserve = auction.currentHighestBid >= auction.reservePrice;
+            return {
+              ...auction,
+              remainingSeconds: 0,
+              status: (hasMetReserve ? 'Awarded' : 'Unsold') as OnlineAuction['status'],
+              winningBid: hasMetReserve ? auction.currentHighestBid : undefined,
+              winningBuyerName: hasMetReserve ? auction.currentLeaderBuyerName : undefined,
+            };
+          }
+
+          let simulatedAuction = { ...auction, remainingSeconds: newRemaining };
+          if (
+            auction.autoBidActive &&
+            newRemaining > 5 &&
+            newRemaining % 8 === 0 &&
+            Math.random() > 0.4 &&
+            buyers.length > 0
+          ) {
+            const randomBuyer = buyers[Math.floor(Math.random() * buyers.length)];
+            if (randomBuyer.id !== auction.currentLeaderBuyerId) {
+              const increments = [10, 25, 50];
+              const inc = increments[Math.floor(Math.random() * increments.length)];
+              const newAmount = auction.currentHighestBid + inc;
+
+              const rivalBid: OnlineBid = {
+                id: 'bid-sim-' + Date.now(),
+                bidderId: randomBuyer.id,
+                bidderName: randomBuyer.name,
+                bidderTradeName: randomBuyer.tradeName,
+                paddleNumber: randomBuyer.paddleNumber,
+                amount: newAmount,
+                timestamp: new Date().toLocaleTimeString(),
+              };
+
+              let extraSecs = 0;
+              let antiSniped = simulatedAuction.antiSniped;
+              if (newRemaining <= 30) {
+                extraSecs = 60;
+                antiSniped = true;
+              }
+
+              simulatedAuction = {
+                ...simulatedAuction,
+                currentHighestBid: newAmount,
+                currentLeaderBuyerId: randomBuyer.id,
+                currentLeaderBuyerName: randomBuyer.tradeName,
+                currentLeaderPaddle: randomBuyer.paddleNumber,
+                bidsCount: simulatedAuction.bidsCount + 1,
+                bidsHistory: [rivalBid, ...simulatedAuction.bidsHistory],
+                remainingSeconds: newRemaining + extraSecs,
+                antiSniped,
+              };
+            }
+          }
+
+          return simulatedAuction;
+        });
+
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [buyers]);
+
+  // 7. Workforce Management
+  const addEmployee = (empData: Omit<Employee, 'id'>) => {
+    const newEmp: Employee = {
+      ...empData,
+      id: 'emp-' + (employees.length + 1) + '-' + Date.now().toString().slice(-4),
+    };
+    setEmployees([...employees, newEmp]);
+    addNotification('Staff Member Added', `${newEmp.name} registered.`, 'success');
+  };
+
+  const updateEmployee = (emp: Employee) => {
+    setEmployees(employees.map(e => (e.id === emp.id ? emp : e)));
+  };
+
+  const resetEmployeePassword = (empId: string, newPass: string) => {
+    setEmployees(employees.map(e => (e.id === empId ? { ...e, password: newPass } : e)));
+    addNotification('Password Updated', 'Staff portal password reset successfully.', 'info');
+  };
+
+  // 8. Attendance
+  const markAttendance = (data: Omit<AttendanceRecord, 'id' | 'updatedAt'>) => {
+    const existingIndex = attendance.findIndex(a => a.date === data.date && a.employeeId === data.employeeId);
+    let updated: AttendanceRecord[];
+    if (existingIndex >= 0) {
+      updated = [...attendance];
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        status: data.status,
+        overtimeHours: data.overtimeHours,
+        branch: data.branch,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      const record: AttendanceRecord = {
+        ...data,
+        id: 'att-' + Date.now(),
+        updatedAt: new Date().toISOString(),
+      };
+      updated = [record, ...attendance];
+    }
+    setAttendance(updated);
+  };
+
+  const markAllPresentForDate = (date: string, branch: string) => {
+    const newRecords: AttendanceRecord[] = employees.map(emp => ({
+      id: 'att-' + emp.id + '-' + date,
+      date,
+      employeeId: emp.id,
+      status: 'P',
+      overtimeHours: 0,
+      branch,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    const filtered = attendance.filter(a => a.date !== date);
+    setAttendance([...newRecords, ...filtered]);
+    addNotification('Attendance Marked', `All staff marked Present for ${date}.`, 'success');
+  };
+
+  // 9. Staff Advances
+  const recordCashAdvance = (data: Omit<CashAdvance, 'id' | 'voucherNumber'>): CashAdvance => {
+    const voucherNumber = 'ADV-2026-' + Math.floor(100 + Math.random() * 900);
+    const newAdv: CashAdvance = {
+      ...data,
+      id: 'adv-' + Date.now(),
+      voucherNumber,
+    };
+    setAdvances([newAdv, ...advances]);
+    addNotification('Cash Advance Disbursed', `₹${data.amount.toLocaleString('en-IN')} disbursed to ${data.employeeName}.`, 'warning');
+    return newAdv;
+  };
+
+  // 10. Salary & Payroll
+  const generateMonthlyPayroll = (monthStr: string): PayrollRecord[] => {
+    const records: PayrollRecord[] = employees.map(emp => {
+      const empAtt = attendance.filter(a => a.employeeId === emp.id && a.date.startsWith(monthStr));
+      const daysPresent = empAtt.filter(a => a.status === 'P').length;
+      const daysHalf = empAtt.filter(a => a.status === 'HD').length;
+      const daysAbsent = empAtt.filter(a => a.status === 'A').length;
+      const daysLeave = empAtt.filter(a => a.status === 'L').length;
+
+      const totalWorkedDays = daysPresent + daysHalf * 0.5;
+      const totalOtHours = empAtt.reduce((sum, a) => sum + (a.overtimeHours || 0), 0);
+      const overtimePay = Math.round(totalOtHours * (emp.overtimeRatePerHour || 100));
+
+      let baseSalaryEarned = 0;
+      if (emp.salaryBasis === 'Daily') {
+        baseSalaryEarned = Math.round(totalWorkedDays * emp.baseSalary);
+      } else {
+        const dayRate = emp.baseSalary / 26;
+        baseSalaryEarned = Math.round(totalWorkedDays * dayRate);
+      }
+
+      const grossSalary = baseSalaryEarned + overtimePay;
+
+      const activeAdv = advances
+        .filter(adv => adv.employeeId === emp.id && adv.status === 'Active')
+        .reduce((sum, adv) => sum + adv.amount, 0);
+
+      const advanceDeduction = Math.min(activeAdv, Math.round(grossSalary * 0.5));
+      const otherDeduction = 0;
+      const netSalary = Math.max(0, grossSalary - advanceDeduction - otherDeduction);
+
+      return {
+        id: 'pay-' + emp.id + '-' + monthStr,
+        payrollMonth: monthStr,
+        employeeId: emp.id,
+        employeeCode: emp.code,
+        employeeName: emp.name,
+        role: emp.role,
+        baseSalary: emp.baseSalary,
+        daysPresent,
+        daysHalf,
+        daysAbsent,
+        daysLeave,
+        overtimeHours: totalOtHours,
+        overtimePay,
+        grossSalary,
+        advanceDeduction,
+        otherDeduction,
+        netSalary,
+        paymentStatus: 'Pending',
+      };
+    });
+
+    setPayrolls(records);
+    return records;
+  };
+
+  const processSalaryPayment = (payrollId: string, paymentMethod: string, remarks?: string) => {
+    const target = payrolls.find(p => p.id === payrollId);
+    if (!target) return;
+
+    const updatedPayrolls = payrolls.map(p =>
+      p.id === payrollId
+        ? {
+          ...p,
+          paymentStatus: 'Processed' as const,
+          paidDate: new Date().toISOString().slice(0, 10),
+          paidFromAccount: paymentMethod,
+          remarks,
+        }
+        : p
+    );
+    setPayrolls(updatedPayrolls);
+
+    if (target.advanceDeduction > 0) {
+      let remainingToRecover = target.advanceDeduction;
+      const updatedAdvances = advances.map(adv => {
+        if (adv.employeeId === target.employeeId && adv.status === 'Active' && remainingToRecover > 0) {
+          if (adv.amount <= remainingToRecover) {
+            remainingToRecover -= adv.amount;
+            return {
+              ...adv,
+              status: 'Recovered' as const,
+              recoveredInMonth: target.payrollMonth,
+            };
+          }
+        }
+        return adv;
+      });
+      setAdvances(updatedAdvances);
+    }
+
+    addNotification(
+      'Wage Disbursed',
+      `Net pay ₹${target.netSalary.toLocaleString('en-IN')} paid to ${target.employeeName}.`,
+      'success'
+    );
+  };
+
+  const loadDemoData = () => {
+    setIsLoading(true);
+    setLoadingMessage(language === 'ta' ? 'மாதிரி வாழை மண்டி தரவுகள் ஏற்றப்படுகின்றன...' : 'Loading Demo Banana Mandi Data...');
+    setTimeout(() => {
+      setProfileState(INITIAL_MANDI_PROFILE);
+      setStorage('kvs_profile', INITIAL_MANDI_PROFILE);
+
+      setSellersState(INITIAL_SELLERS);
+      setStorage('kvs_sellers', INITIAL_SELLERS);
+
+      setBuyersState(INITIAL_BUYERS);
+      setStorage('kvs_buyers', INITIAL_BUYERS);
+
+      setProductsState(INITIAL_PRODUCTS);
+      setStorage('kvs_products', INITIAL_PRODUCTS);
+
+      setLotsState(INITIAL_INWARD_LOTS);
+      setStorage('kvs_lots', INITIAL_INWARD_LOTS);
+
+      setTransactionsState(INITIAL_AUCTION_TRANSACTIONS);
+      setStorage('kvs_txs', INITIAL_AUCTION_TRANSACTIONS);
+
+      setOnlineAuctionsState(INITIAL_ONLINE_AUCTIONS);
+      setStorage('kvs_online_auctions', INITIAL_ONLINE_AUCTIONS);
+
+      setEmployeesState(INITIAL_EMPLOYEES);
+      setStorage('kvs_employees', INITIAL_EMPLOYEES);
+
+      setAttendanceState(INITIAL_ATTENDANCE);
+      setStorage('kvs_attendance', INITIAL_ATTENDANCE);
+
+      setAdvancesState(INITIAL_ADVANCES);
+      setStorage('kvs_advances', INITIAL_ADVANCES);
+
+      setPayrollsState([]);
+      setStorage('kvs_payrolls', []);
+
+      setIsLoading(false);
+      setLoadingMessage('');
+      addNotification(
+        language === 'ta' ? 'மாதிரி தரவு ஏற்றப்பட்டது' : 'Demo Data Loaded',
+        language === 'ta' ? 'கேவிஎஸ் வாழை விவசாயிகள், வியாபாரிகள், ஏல சீட்டுகள் தயார்.' : 'Demo Banana & Leaves Mandi baseline restored with mock data.',
+        'success'
+      );
+    }, 400);
+  };
+
+  const clearAllData = () => {
+    setIsLoading(true);
+    setLoadingMessage(language === 'ta' ? 'அனைத்து தரவுகளும் அழிக்கப்பட்டு புதிய தரவுத்தளம் அமைக்கப்படுகிறது...' : 'Clearing demo data for 100% manual entry...');
+    setTimeout(() => {
+      setSellersState([]);
+      setStorage('kvs_sellers', []);
+
+      setBuyersState([]);
+      setStorage('kvs_buyers', []);
+
+      setLotsState([]);
+      setStorage('kvs_lots', []);
+
+      setTransactionsState([]);
+      setStorage('kvs_txs', []);
+
+      setOnlineAuctionsState([]);
+      setStorage('kvs_online_auctions', []);
+
+      setAttendanceState([]);
+      setStorage('kvs_attendance', []);
+
+      setAdvancesState([]);
+      setStorage('kvs_advances', []);
+
+      setPayrollsState([]);
+      setStorage('kvs_payrolls', []);
+
+      setIsLoading(false);
+      setLoadingMessage('');
+      addNotification(
+        language === 'ta' ? 'தரவுத்தளம் சுத்தப்படுத்தப்பட்டது' : 'Database Cleared',
+        language === 'ta' ? 'இப்போது நீங்கள் நேரடி விவரங்களை உள்ளிடலாம். அனைத்து உள்ளீடுகளும் உள்ளூரில் (LocalStorage) சேமிக்கப்படும்.' : 'Demo data removed. Ready for manual entry, all records will save to LocalStorage.',
+        'info'
+      );
+    }, 400);
+  };
+
+  const resetAllDemoData = () => {
+    loadDemoData();
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        theme,
+        toggleTheme,
+        setTheme,
+        isLoading,
+        loadingMessage,
+        language,
+        setLanguage,
+        t,
+        activeRole,
+        setActiveRole,
+        activeBranch,
+        setActiveBranch,
+        currentUser,
+        hasPermission,
+        profile,
+        updateProfile,
+        sellers,
+        addSeller,
+        updateSeller,
+        buyers,
+        addBuyer,
+        updateBuyer,
+        products,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        lots,
+        addInwardLot,
+        updateLotStatus,
+        transactions,
+        completeFloorAuctionLot,
+        onlineAuctions,
+        createOnlineAuction,
+        placeOnlineBid,
+        toggleAutoBidding,
+        completeDigitalAuctionLot,
+        settleFarmerPayout,
+        recordBuyerPayment,
+        employees,
+        addEmployee,
+        updateEmployee,
+        resetEmployeePassword,
+        attendance,
+        markAttendance,
+        markAllPresentForDate,
+        advances,
+        recordCashAdvance,
+        payrolls,
+        generateMonthlyPayroll,
+        processSalaryPayment,
+        notifications,
+        addNotification,
+        markNotificationRead,
+        resetAllDemoData,
+        loadDemoData,
+        clearAllData,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const ctx = useContext(AppContext);
+  if (!ctx) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return ctx;
+};
