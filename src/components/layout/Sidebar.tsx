@@ -17,6 +17,7 @@ import {
   Sparkles,
   ShieldCheck,
   Store,
+  BookOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -79,10 +80,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
       icon: Radio,
     },
     {
+      id: 'ledger',
+      path: '/ledger',
+      label: 'Financial Ledger & Cash Book',
+      labelTamil: 'நிதி லெட்ஜர் & கணக்கு ஏடு',
+      icon: BookOpen,
+    },
+    {
       id: 'reports',
       path: '/reports',
       label: t('navReports'),
-      labelTamil: 'பில்லிங் & ரசீதுகள்',
+      labelTamil: 'அறிக்கைகள் (Reports 3-Tier)',
       icon: FileSpreadsheet,
     },
     {

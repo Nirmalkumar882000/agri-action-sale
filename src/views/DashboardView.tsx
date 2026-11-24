@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   WalletCards,
   Receipt,
+  BookOpen,
 } from 'lucide-react';
 import { KvsA5Receipt } from '../components/receipts/KvsA5Receipt';
 import { PosThermalReceipt } from '../components/receipts/PosThermalReceipt';
@@ -187,7 +188,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
           {t('quickActions')}
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           <button
             onClick={() => onNavigate('/offline/live')}
             className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-bold transition-all text-left cursor-pointer"
@@ -203,11 +204,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <span>{t('actionNewInward')}</span>
           </button>
           <button
+            onClick={() => onNavigate('/ledger')}
+            className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-bold transition-all text-left cursor-pointer"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>{language === 'ta' ? 'நிதி லெட்ஜர் (Ledger)' : 'Financial Ledger'}</span>
+          </button>
+          <button
             onClick={() => onNavigate('/reports')}
             className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all text-left cursor-pointer"
           >
             <Receipt className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-            <span>POS / A5 Billing & Profile</span>
+            <span>{language === 'ta' ? '3-அறிக்கைகள் (Reports)' : '3-Tier Reports'}</span>
           </button>
           <button
             onClick={() => onNavigate('/workforce/advances')}

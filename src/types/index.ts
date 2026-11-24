@@ -308,3 +308,59 @@ export interface NotificationItem {
   timestamp: string;
   read: boolean;
 }
+
+export type LedgerEntryType =
+  | 'AUCTION_SALE'
+  | 'FARMER_PAYOUT'
+  | 'BUYER_COLLECTION'
+  | 'COMMISSION_INCOME'
+  | 'SERVICE_FEE'
+  | 'EXPENSE_PAYMENT'
+  | 'STAFF_ADVANCE'
+  | 'SALARY_PAYOUT';
+
+export type PaymentMode = 'Cash' | 'Bank Transfer' | 'UPI / GPay' | 'Cheque' | 'Credit';
+
+export interface LedgerEntry {
+  id: string;
+  voucherNumber: string; // e.g. "LED-2026-001"
+  date: string;          // DD/MM/YYYY
+  time: string;          // HH:mm:ss
+  type: LedgerEntryType;
+  partyType: 'Farmer' | 'Buyer' | 'Mandi' | 'Staff' | 'Expense';
+  partyId?: string;
+  partyName: string;
+  partyCode?: string;
+  debit: number;         // பற்று (Amount paid out / receivable)
+  credit: number;        // வரவு (Amount received / payable / income)
+  runningBalance: number;// இருப்பு
+  paymentMode: PaymentMode;
+  referenceNo?: string;  // e.g. "KVS-2026-054" / "TXN-98124"
+  narration: string;     // Description
+  narrationTamil?: string;
+  category?: string;     // e.g. "Patti Settlement", "Buyer Collection", "Commission", "Coolie Labor"
+  createdAt: string;
+}
+
+export interface MandiExpense {
+  id: string;
+  voucherNo: string;
+  date: string;          // DD/MM/YYYY
+  time: string;
+  category:
+    | 'Coolie & Labor'
+    | 'Electricity & Water'
+    | 'Platform Maintenance'
+    | 'Tea & Refreshment'
+    | 'Stationery & Printing'
+    | 'Fuel & Transport'
+    | 'License & Statutory'
+    | 'Other';
+  categoryTamil?: string;
+  amount: number;
+  paymentMode: PaymentMode;
+  paidTo: string;
+  paidFromAccount: string;
+  remarks: string;
+}
+

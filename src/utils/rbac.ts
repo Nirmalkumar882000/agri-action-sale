@@ -9,6 +9,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, string[]> = {
   '/offline/live': ['auction', 'manual_auctions'],
   '/online': ['auction', 'auctions_sale'],
   '/reports': ['reports'],
+  '/ledger': ['reports'],
   '/profile': ['profile', 'always'],
   '/workforce/employee-details': ['workforce'],
   '/workforce/attendance': ['workforce'],

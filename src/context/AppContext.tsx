@@ -15,6 +15,9 @@ import {
   PayrollRecord,
   MandiProfile,
   NotificationItem,
+  LedgerEntry,
+  MandiExpense,
+  PaymentMode,
 } from '../types';
 import {
   INITIAL_MANDI_PROFILE,
@@ -27,6 +30,8 @@ import {
   INITIAL_EMPLOYEES,
   INITIAL_ATTENDANCE,
   INITIAL_ADVANCES,
+  INITIAL_LEDGER_ENTRIES,
+  INITIAL_MANDI_EXPENSES,
 } from '../utils/mockData';
 import { ROLE_DEFAULT_PERMISSIONS, canAccessRoute } from '../utils/rbac';
 import { translations } from '../utils/i18n';
@@ -100,6 +105,14 @@ interface AppContextType {
   // Settlements & Payments
   settleFarmerPayout: (sellerId: string, amount?: number, paymentMode?: string) => void;
   recordBuyerPayment: (buyerId: string, amount: number, paymentMode?: string) => void;
+
+  // Financial Ledger & Expenses
+  ledgerEntries: LedgerEntry[];
+  mandiExpenses: MandiExpense[];
+  addLedgerEntry: (entry: Omit<LedgerEntry, 'id' | 'voucherNumber' | 'createdAt' | 'runningBalance'>) => LedgerEntry;
+  recordFarmerPayout: (sellerId: string, amount: number, paymentMode?: PaymentMode, reference?: string, remarks?: string) => void;
+  recordBuyerReceipt: (buyerId: string, amount: number, paymentMode?: PaymentMode, reference?: string, remarks?: string) => void;
+  recordMandiExpense: (expense: Omit<MandiExpense, 'id' | 'voucherNo'>) => MandiExpense;
 
   // Workforce & Staff
   employees: Employee[];
@@ -227,6 +240,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [payrolls, setPayrollsState] = useState<PayrollRecord[]>(() =>
     getStorage('kvs_payrolls', [])
   );
+  const [ledgerEntries, setLedgerEntriesState] = useState<LedgerEntry[]>(() =>
+    getStorage('kvs_ledger_entries', INITIAL_LEDGER_ENTRIES)
+  );
+  const [mandiExpenses, setMandiExpensesState] = useState<MandiExpense[]>(() =>
+    getStorage('kvs_mandi_expenses', INITIAL_MANDI_EXPENSES)
+  );
+
+  const setLedgerEntries = (data: LedgerEntry[]) => {
+    setLedgerEntriesState(data);
+    setStorage('kvs_ledger_entries', data);
+  };
+
+  const setMandiExpenses = (data: MandiExpense[]) => {
+    setMandiExpensesState(data);
+    setStorage('kvs_mandi_expenses', data);
+  };
   const [notifications, setNotificationsState] = useState<NotificationItem[]>(() =>
     getStorage('kvs_notifications', [
       {
@@ -440,6 +469,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLots(lots.map(l => (l.id === lotId ? { ...l, status, ...(shed ? { shedLocation: shed } : {}) } : l)));
   };
 
+  // Financial Ledger Entry Creator
+  const addLedgerEntry = (
+    entry: Omit<LedgerEntry, 'id' | 'voucherNumber' | 'createdAt' | 'runningBalance'>
+  ): LedgerEntry => {
+    const voucherNumber = `LED-${new Date().getFullYear()}-${String(ledgerEntries.length + 1).padStart(3, '0')}`;
+    const prevBalance = ledgerEntries.length > 0 ? ledgerEntries[0].runningBalance : 0;
+    const runningBalance = prevBalance + entry.credit - entry.debit;
+
+    const newEntry: LedgerEntry = {
+      ...entry,
+      id: 'led-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      voucherNumber,
+      runningBalance,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newEntry, ...ledgerEntries];
+    setLedgerEntries(updated);
+    return newEntry;
+  };
+
   // 5. Floor Auction Completion & Instant KVS Chit Generation
   const completeFloorAuctionLot = (payload: {
     lot: InwardLot;
@@ -552,6 +602,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : s
       )
     );
+
+    // Record in Financial General Ledger
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'AUCTION_SALE',
+      partyType: 'Buyer',
+      partyId: buyer.id,
+      partyName: buyer.tradeName,
+      partyCode: buyer.paddleNumber,
+      debit: buyerTotalBilled,
+      credit: 0,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Auction Bill #${billNumber}: ${weighedQuantity} ${lot.unit} ${lot.productName} awarded to ${buyer.tradeName}`,
+      narrationTamil: `ஏல பில் #${billNumber}: ${weighedQuantity} ${lot.unit} ${lot.productNameTamil || lot.productName} - வியாபாரி பற்று`,
+      category: 'Produce Sale',
+    });
+
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'AUCTION_SALE',
+      partyType: 'Farmer',
+      partyId: lot.sellerId,
+      partyName: lot.sellerName,
+      partyCode: lot.sellerId,
+      debit: 0,
+      credit: netFarmerPayable,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Farmer Patti Credit: Bill #${billNumber} (${weighedQuantity} ${lot.unit} - Net: ₹${netFarmerPayable.toLocaleString('en-IN')})`,
+      narrationTamil: `விவசாயி பட்டி வரவு: பில் #${billNumber} (நிகர வரவு: ₹${netFarmerPayable.toLocaleString('en-IN')})`,
+      category: 'Patti Settlement',
+    });
+
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'COMMISSION_INCOME',
+      partyType: 'Mandi',
+      partyName: profile.shopName,
+      debit: 0,
+      credit: commissionAmount,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Mandi Commission (${commissionPercent}%) on Bill #${billNumber}`,
+      narrationTamil: `மண்டி கமிஷன் (${commissionPercent}%) பில் #${billNumber}`,
+      category: 'Commission',
+    });
 
     addNotification(
       'Mandi Sale Completed',
@@ -766,6 +866,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
+    // Record in Financial General Ledger
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'AUCTION_SALE',
+      partyType: 'Buyer',
+      partyId: buyer.id,
+      partyName: buyer.tradeName,
+      partyCode: buyer.paddleNumber,
+      debit: buyerTotalBilled,
+      credit: 0,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Digital Auction Bill #${billNumber}: ${lot.productName} awarded to ${buyer.tradeName}`,
+      narrationTamil: `டிஜிட்டல் ஏல பில் #${billNumber}: ${lot.productNameTamil || lot.productName} - வியாபாரி பற்று`,
+      category: 'Produce Sale',
+    });
+
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'AUCTION_SALE',
+      partyType: 'Farmer',
+      partyId: lot.sellerId,
+      partyName: lot.sellerName,
+      partyCode: lot.sellerId,
+      debit: 0,
+      credit: netFarmerPayable,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Farmer Patti Credit: Bill #${billNumber} (Net: ₹${netFarmerPayable.toLocaleString('en-IN')})`,
+      narrationTamil: `விவசாயி பட்டி வரவு: பில் #${billNumber} (நிகர வரவு: ₹${netFarmerPayable.toLocaleString('en-IN')})`,
+      category: 'Patti Settlement',
+    });
+
+    addLedgerEntry({
+      date: dateFormatted,
+      time: timeFormatted,
+      type: 'COMMISSION_INCOME',
+      partyType: 'Mandi',
+      partyName: profile.shopName,
+      debit: 0,
+      credit: commissionAmount,
+      paymentMode: 'Credit',
+      referenceNo: chitNumber,
+      narration: `Mandi Commission (${commissionPercent}%) on Digital Bill #${billNumber}`,
+      narrationTamil: `மண்டி கமிஷன் (${commissionPercent}%) பில் #${billNumber}`,
+      category: 'Commission',
+    });
+
     addNotification(
       'Digital Auction Hammer Fell',
       `Bill #${billNumber}: ${lot.productName} awarded to ${buyer.tradeName} for ₹${grossAmount.toLocaleString()}`,
@@ -775,55 +925,150 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return tx;
   };
 
-  const settleFarmerPayout = (sellerId: string, amount?: number, paymentMode: string = 'Cash') => {
+  const recordFarmerPayout = (
+    sellerId: string,
+    amount: number,
+    paymentMode: PaymentMode = 'Cash',
+    reference?: string,
+    remarks?: string
+  ) => {
     const seller = sellers.find(s => s.id === sellerId);
     if (!seller) return;
-    const settleAmount = amount !== undefined ? amount : seller.payoutBalance;
+    const payoutAmount = Math.max(0, amount);
 
     setSellers(
       sellers.map(s =>
         s.id === sellerId
           ? {
-            ...s,
-            payoutBalance: Math.max(0, s.payoutBalance - settleAmount),
-          }
+              ...s,
+              payoutBalance: Math.max(0, s.payoutBalance - payoutAmount),
+            }
           : s
       )
     );
 
+    const now = new Date();
+    addLedgerEntry({
+      date: now.toLocaleDateString('en-GB'),
+      time: now.toTimeString().slice(0, 8),
+      type: 'FARMER_PAYOUT',
+      partyType: 'Farmer',
+      partyId: seller.id,
+      partyName: seller.name,
+      partyCode: seller.code,
+      debit: payoutAmount,
+      credit: 0,
+      paymentMode,
+      referenceNo: reference || `PAY-${seller.code}-${Date.now().toString().slice(-4)}`,
+      narration: remarks || `Farmer settlement payout paid to ${seller.name} (${seller.village}) via ${paymentMode}`,
+      narrationTamil: `விவசாயி ${seller.nameTamil || seller.name} (${seller.village}) பட்டி பட்டுவாடா - ${paymentMode}`,
+      category: 'Patti Settlement',
+    });
+
     addNotification(
-      'Farmer Patti Settled',
-      `Paid ₹${settleAmount.toLocaleString('en-IN')} to ${seller.name} via ${paymentMode}. Balance settled.`,
+      'Farmer Settlement Completed',
+      `Paid ₹${payoutAmount.toLocaleString('en-IN')} to ${seller.name} via ${paymentMode}. Balance settled.`,
       'success'
     );
   };
 
-  const recordBuyerPayment = (buyerId: string, amount: number, paymentMode: string = 'Bank Transfer') => {
+  const recordBuyerReceipt = (
+    buyerId: string,
+    amount: number,
+    paymentMode: PaymentMode = 'Bank Transfer',
+    reference?: string,
+    remarks?: string
+  ) => {
     const buyer = buyers.find(b => b.id === buyerId);
     if (!buyer) return;
+    const receiptAmount = Math.max(0, amount);
 
+    const remainingDues = Math.max(0, buyer.outstandingDues - receiptAmount);
     setBuyers(
       buyers.map(b =>
         b.id === buyerId
           ? {
-            ...b,
-            outstandingDues: Math.max(0, b.outstandingDues - amount),
-            status:
-              b.outstandingDues - amount > b.depositAmount + b.creditLimit
-                ? ('Blocked' as const)
-                : b.outstandingDues - amount > (b.depositAmount + b.creditLimit) * 0.8
-                  ? ('Warning' as const)
-                  : ('Active' as const),
-          }
+              ...b,
+              outstandingDues: remainingDues,
+              status:
+                remainingDues > b.depositAmount + b.creditLimit
+                  ? ('Blocked' as const)
+                  : remainingDues > (b.depositAmount + b.creditLimit) * 0.8
+                    ? ('Warning' as const)
+                    : ('Active' as const),
+            }
           : b
       )
     );
 
+    const now = new Date();
+    addLedgerEntry({
+      date: now.toLocaleDateString('en-GB'),
+      time: now.toTimeString().slice(0, 8),
+      type: 'BUYER_COLLECTION',
+      partyType: 'Buyer',
+      partyId: buyer.id,
+      partyName: buyer.tradeName,
+      partyCode: buyer.paddleNumber,
+      debit: 0,
+      credit: receiptAmount,
+      paymentMode,
+      referenceNo: reference || `RCT-${buyer.paddleNumber}-${Date.now().toString().slice(-4)}`,
+      narration: remarks || `Payment received from trader ${buyer.tradeName} (${buyer.paddleNumber}) via ${paymentMode}`,
+      narrationTamil: `வியாபாரி ${buyer.tradeNameTamil || buyer.tradeName} (${buyer.paddleNumber}) வசூல் வரவு - ${paymentMode}`,
+      category: 'Buyer Collection',
+    });
+
     addNotification(
-      'Buyer Payment Received',
-      `Received ₹${amount.toLocaleString('en-IN')} from ${buyer.tradeName} via ${paymentMode}. Dues cleared.`,
+      'Trader Payment Received',
+      `Received ₹${receiptAmount.toLocaleString('en-IN')} from ${buyer.tradeName} via ${paymentMode}. Dues cleared.`,
       'success'
     );
+  };
+
+  const recordMandiExpense = (data: Omit<MandiExpense, 'id' | 'voucherNo'>): MandiExpense => {
+    const voucherNo = `EXP-${new Date().getFullYear()}-${String(mandiExpenses.length + 1).padStart(2, '0')}`;
+    const newExpense: MandiExpense = {
+      ...data,
+      id: 'exp-' + Date.now(),
+      voucherNo,
+    };
+    const updated = [newExpense, ...mandiExpenses];
+    setMandiExpenses(updated);
+
+    const now = new Date();
+    addLedgerEntry({
+      date: data.date || now.toLocaleDateString('en-GB'),
+      time: data.time || now.toTimeString().slice(0, 8),
+      type: 'EXPENSE_PAYMENT',
+      partyType: 'Expense',
+      partyName: data.paidTo || data.category,
+      debit: data.amount,
+      credit: 0,
+      paymentMode: data.paymentMode,
+      referenceNo: voucherNo,
+      narration: data.remarks || `Mandi Operational Expense: ${data.category} paid to ${data.paidTo}`,
+      narrationTamil: `மண்டி நிர்வாக செலவு: ${data.categoryTamil || data.category} - ${data.paidTo}`,
+      category: data.category,
+    });
+
+    addNotification(
+      'Mandi Expense Recorded',
+      `Disbursed ₹${data.amount.toLocaleString('en-IN')} for ${data.category} (${data.paidTo}).`,
+      'warning'
+    );
+    return newExpense;
+  };
+
+  const settleFarmerPayout = (sellerId: string, amount?: number, paymentMode: string = 'Cash') => {
+    const seller = sellers.find(s => s.id === sellerId);
+    if (!seller) return;
+    const settleAmount = amount !== undefined ? amount : seller.payoutBalance;
+    recordFarmerPayout(sellerId, settleAmount, (paymentMode as PaymentMode) || 'Cash');
+  };
+
+  const recordBuyerPayment = (buyerId: string, amount: number, paymentMode: string = 'Bank Transfer') => {
+    recordBuyerReceipt(buyerId, amount, (paymentMode as PaymentMode) || 'Bank Transfer');
   };
 
   // Real-time ticking
@@ -970,6 +1215,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       voucherNumber,
     };
     setAdvances([newAdv, ...advances]);
+
+    const now = new Date();
+    addLedgerEntry({
+      date: now.toLocaleDateString('en-GB'),
+      time: now.toTimeString().slice(0, 8),
+      type: 'STAFF_ADVANCE',
+      partyType: 'Staff',
+      partyId: data.employeeId,
+      partyName: data.employeeName,
+      debit: data.amount,
+      credit: 0,
+      paymentMode: 'Cash',
+      referenceNo: voucherNumber,
+      narration: `Staff Advance disbursed to ${data.employeeName} (${data.reason})`,
+      narrationTamil: `பணியாளர் அட்வான்ஸ் ரொக்கம்: ${data.employeeName} (${data.reason})`,
+      category: 'Staff Advance',
+    });
+
     addNotification('Cash Advance Disbursed', `₹${data.amount.toLocaleString('en-IN')} disbursed to ${data.employeeName}.`, 'warning');
     return newAdv;
   };
@@ -1066,6 +1329,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAdvances(updatedAdvances);
     }
 
+    const now = new Date();
+    addLedgerEntry({
+      date: now.toLocaleDateString('en-GB'),
+      time: now.toTimeString().slice(0, 8),
+      type: 'SALARY_PAYOUT',
+      partyType: 'Staff',
+      partyId: target.employeeId,
+      partyName: target.employeeName,
+      debit: target.netSalary,
+      credit: 0,
+      paymentMode: (paymentMethod as any) || 'Bank Transfer',
+      referenceNo: target.id,
+      narration: `Monthly Salary Payout for ${target.payrollMonth} to ${target.employeeName} (${remarks || paymentMethod})`,
+      narrationTamil: `மாதாந்திர சம்பளம் பட்டுவாடா: ${target.payrollMonth} - ${target.employeeName}`,
+      category: 'Salary Payroll',
+    });
+
     addNotification(
       'Wage Disbursed',
       `Net pay ₹${target.netSalary.toLocaleString('en-IN')} paid to ${target.employeeName}.`,
@@ -1110,6 +1390,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPayrollsState([]);
       setStorage('kvs_payrolls', []);
 
+      setLedgerEntriesState(INITIAL_LEDGER_ENTRIES);
+      setStorage('kvs_ledger_entries', INITIAL_LEDGER_ENTRIES);
+
+      setMandiExpensesState(INITIAL_MANDI_EXPENSES);
+      setStorage('kvs_mandi_expenses', INITIAL_MANDI_EXPENSES);
+
       setIsLoading(false);
       setLoadingMessage('');
       addNotification(
@@ -1147,6 +1433,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setPayrollsState([]);
       setStorage('kvs_payrolls', []);
+
+      setLedgerEntriesState([]);
+      setStorage('kvs_ledger_entries', []);
+
+      setMandiExpensesState([]);
+      setStorage('kvs_mandi_expenses', []);
 
       setIsLoading(false);
       setLoadingMessage('');
@@ -1203,6 +1495,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         completeDigitalAuctionLot,
         settleFarmerPayout,
         recordBuyerPayment,
+        ledgerEntries,
+        mandiExpenses,
+        addLedgerEntry,
+        recordFarmerPayout,
+        recordBuyerReceipt,
+        recordMandiExpense,
         employees,
         addEmployee,
         updateEmployee,

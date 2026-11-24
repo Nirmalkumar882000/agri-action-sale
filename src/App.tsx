@@ -13,6 +13,7 @@ import { OfflineAuctionView } from './views/OfflineAuctionView';
 import { OfflineLiveDeskView } from './views/OfflineLiveDeskView';
 import { OnlineAuctionView } from './views/OnlineAuctionView';
 import { ReportsView } from './views/ReportsView';
+import { LedgerView } from './views/LedgerView';
 import { ProfileView } from './views/ProfileView';
 import { WorkforceEmployeesView } from './views/WorkforceEmployeesView';
 import { WorkforceAttendanceView } from './views/WorkforceAttendanceView';
@@ -47,6 +48,8 @@ export const AppContent: React.FC = () => {
         return <OnlineAuctionView onNavigate={setCurrentPath} />;
       case '/reports':
         return <ReportsView onNavigate={setCurrentPath} />;
+      case '/ledger':
+        return <LedgerView onNavigate={setCurrentPath} />;
       case '/profile':
         return <ProfileView onNavigate={setCurrentPath} />;
       case '/workforce/employee-details':
