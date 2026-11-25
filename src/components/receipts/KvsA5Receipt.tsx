@@ -6,6 +6,7 @@ interface KvsA5ReceiptProps {
   transaction: AuctionTransaction;
   profile: MandiProfile;
   onClose: () => void;
+  onSwitchFormat?: (format: 'a5' | 'pos') => void;
 }
 
 const getTamilUnit = (itemType?: string, unit?: string) => {
@@ -22,31 +23,43 @@ const getTamilUnit = (itemType?: string, unit?: string) => {
   return unit ? unit.split(' ')[0] : itemType || 'அளவு';
 };
 
-export const KvsA5Receipt: React.FC<KvsA5ReceiptProps> = ({ transaction, profile, onClose }) => {
+export const KvsA5Receipt: React.FC<KvsA5ReceiptProps> = ({ transaction, profile, onClose, onSwitchFormat }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-[155mm] max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Floating Toolbar (Hidden on print) */}
-        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-              KVS A5 Sheet Receipt / விற்பனை சீட்டு
+              KVS A5 Sheet / விற்பனை சீட்டு
             </span>
             <span className="text-xs font-mono bg-slate-800 px-2 py-0.5 rounded-sm">
-              எண்: {transaction.billNumber}
+              #{transaction.billNumber}
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {onSwitchFormat && (
+              <button
+                type="button"
+                onClick={() => onSwitchFormat('pos')}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 cursor-pointer"
+                title="Switch to 80mm POS Thermal Slip"
+              >
+                POS (80mm)
+              </button>
+            )}
             <button
+              type="button"
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print A5 Sheet</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

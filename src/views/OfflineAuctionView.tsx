@@ -329,23 +329,29 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
       alert('Please select a wholesale trader with a paddle number.');
       return;
     }
-    if (!qty || qty <= 0 || qty > lot.availableQuantity) {
+    const parsedQty = Number(qty);
+    const parsedRate = Number(rate);
+
+    if (isNaN(parsedQty) || parsedQty <= 0 || parsedQty > lot.availableQuantity) {
       alert(`Please enter a valid quantity (1 to ${lot.availableQuantity}).`);
       return;
     }
-    if (!rate || rate <= 0) {
+    if (isNaN(parsedRate) || parsedRate <= 0) {
       alert('Please enter a valid winning bid rate.');
       return;
     }
 
     const tx = completeFloorAuctionLot({
       lot,
-      weighedQuantity: qty,
-      winningRate: rate,
+      weighedQuantity: parsedQty,
+      winningRate: parsedRate,
       buyer,
     });
 
-    // Automatically trigger instant receipt preview
+    // Maintain current seller selection so view stays stable
+    setSelectedSellerId(lot.sellerId);
+
+    // Automatically trigger instant receipt preview modal
     setActiveReceipt(tx);
     setReceiptFormat('a5');
 
@@ -961,7 +967,15 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
                                       All produce in this lot has been successfully sold! Check the "Completed" tab to reprint sale chits.
                                     </div>
                                   ) : (
-                                    <div className="space-y-3">
+                                    <div
+                                      className="space-y-3"
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+                                          e.preventDefault();
+                                          handleCompleteSaleForLot(lot);
+                                        }
+                                      }}
+                                    >
                                       {/* Form Grid: Qty | Buyer Name | Rate (₹) */}
                                       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                                         {/* Qty Input (3 Cols) */}
@@ -978,6 +992,12 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
                                             onChange={e =>
                                               setBiddingQty(prev => ({ ...prev, [lot.id]: Number(e.target.value) }))
                                             }
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleCompleteSaleForLot(lot);
+                                              }
+                                            }}
                                             className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold text-base focus:outline-hidden focus:border-emerald-600"
                                           />
                                         </div>
@@ -999,6 +1019,12 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
                                             onChange={e =>
                                               setBiddingBuyerId(prev => ({ ...prev, [lot.id]: e.target.value }))
                                             }
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleCompleteSaleForLot(lot);
+                                              }
+                                            }}
                                             className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-xs focus:outline-hidden focus:border-emerald-600 cursor-pointer"
                                           >
                                             {buyers.map(b => (
@@ -1022,6 +1048,12 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
                                             onChange={e =>
                                               setBiddingRate(prev => ({ ...prev, [lot.id]: Number(e.target.value) }))
                                             }
+                                            onKeyDown={e => {
+                                              if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleCompleteSaleForLot(lot);
+                                              }
+                                            }}
                                             className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 font-mono font-black text-base focus:outline-hidden focus:border-emerald-600"
                                           />
                                         </div>
@@ -1471,12 +1503,14 @@ export const OfflineAuctionView: React.FC<OfflineAuctionViewProps> = ({ onNaviga
             transaction={activeReceipt}
             profile={profile}
             onClose={() => setActiveReceipt(null)}
+            onSwitchFormat={setReceiptFormat}
           />
         ) : (
           <PosThermalReceipt
             transaction={activeReceipt}
             profile={profile}
             onClose={() => setActiveReceipt(null)}
+            onSwitchFormat={setReceiptFormat}
           />
         )
       )}

@@ -364,3 +364,25 @@ export interface MandiExpense {
   remarks: string;
 }
 
+export interface SmsLogEntry {
+  id: string;
+  sellerName: string;
+  mobile: string;
+  date: string;
+  time: string;
+  status: 'SENT' | 'DELIVERED' | 'FAILED' | 'PENDING';
+  messageText: string;
+  charges: number;
+}
+
+export interface WhatsAppLogEntry {
+  id: string;
+  recipientName: string;
+  mobile: string;
+  date: string;
+  time: string;
+  status: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED';
+  messageText: string;
+  amount: number;
+}
+

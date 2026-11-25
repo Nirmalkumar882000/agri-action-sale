@@ -18,6 +18,8 @@ import {
   LedgerEntry,
   MandiExpense,
   PaymentMode,
+  SmsLogEntry,
+  WhatsAppLogEntry,
 } from '../types';
 import {
   INITIAL_MANDI_PROFILE,
@@ -32,6 +34,8 @@ import {
   INITIAL_ADVANCES,
   INITIAL_LEDGER_ENTRIES,
   INITIAL_MANDI_EXPENSES,
+  INITIAL_SMS_LOGS,
+  INITIAL_WHATSAPP_LOGS,
 } from '../utils/mockData';
 import { ROLE_DEFAULT_PERMISSIONS, canAccessRoute } from '../utils/rbac';
 import { translations } from '../utils/i18n';
@@ -138,6 +142,12 @@ interface AppContextType {
   notifications: NotificationItem[];
   addNotification: (title: string, message: string, type?: NotificationItem['type']) => void;
   markNotificationRead: (id: string) => void;
+
+  // Messaging & Dispatch Logs
+  smsLogs: SmsLogEntry[];
+  addSmsLog: (entry: Omit<SmsLogEntry, 'id'>) => SmsLogEntry;
+  whatsAppLogs: WhatsAppLogEntry[];
+  addWhatsAppLog: (entry: Omit<WhatsAppLogEntry, 'id'>) => WhatsAppLogEntry;
 
   // System
   resetAllDemoData: () => void;
@@ -256,6 +266,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMandiExpensesState(data);
     setStorage('kvs_mandi_expenses', data);
   };
+
+  const [smsLogs, setSmsLogsState] = useState<SmsLogEntry[]>(() =>
+    getStorage('kvs_sms_logs', INITIAL_SMS_LOGS)
+  );
+  const setSmsLogs = (data: SmsLogEntry[]) => {
+    setSmsLogsState(data);
+    setStorage('kvs_sms_logs', data);
+  };
+  const addSmsLog = (entry: Omit<SmsLogEntry, 'id'>) => {
+    const newEntry: SmsLogEntry = {
+      id: 'sms-' + Date.now(),
+      ...entry,
+    };
+    const updated = [newEntry, ...smsLogs];
+    setSmsLogs(updated);
+    return newEntry;
+  };
+
+  const [whatsAppLogs, setWhatsAppLogsState] = useState<WhatsAppLogEntry[]>(() =>
+    getStorage('kvs_whatsapp_logs', INITIAL_WHATSAPP_LOGS)
+  );
+  const setWhatsAppLogs = (data: WhatsAppLogEntry[]) => {
+    setWhatsAppLogsState(data);
+    setStorage('kvs_whatsapp_logs', data);
+  };
+  const addWhatsAppLog = (entry: Omit<WhatsAppLogEntry, 'id'>) => {
+    const newEntry: WhatsAppLogEntry = {
+      id: 'wa-' + Date.now(),
+      ...entry,
+    };
+    const updated = [newEntry, ...whatsAppLogs];
+    setWhatsAppLogs(updated);
+    return newEntry;
+  };
+
   const [notifications, setNotificationsState] = useState<NotificationItem[]>(() =>
     getStorage('kvs_notifications', [
       {
@@ -1516,6 +1561,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         addNotification,
         markNotificationRead,
+        smsLogs,
+        addSmsLog,
+        whatsAppLogs,
+        addWhatsAppLog,
         resetAllDemoData,
         loadDemoData,
         clearAllData,

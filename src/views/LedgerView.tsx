@@ -46,6 +46,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [accountFilter, setAccountFilter] = useState<'ALL' | 'Farmer' | 'Buyer' | 'Mandi' | 'Staff' | 'Expense'>('ALL');
+  const [selectedPartyId, setSelectedPartyId] = useState<string>('ALL');
   const [paymentModeFilter, setPaymentModeFilter] = useState<'ALL' | PaymentMode>('ALL');
   const [typeFilter, setTypeFilter] = useState<'ALL' | string>('ALL');
 
@@ -82,7 +83,18 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
   const filteredEntries = useMemo(() => {
     return ledgerEntries.filter(entry => {
       // Account filter
-      if (accountFilter !== 'ALL' && entry.partyType !== accountFilter) return false;
+      if (accountFilter === 'Farmer' && entry.partyType !== 'Farmer') return false;
+      if (accountFilter === 'Buyer' && entry.partyType !== 'Buyer') return false;
+      if (accountFilter === 'Mandi' && entry.partyType !== 'Mandi' && entry.partyType !== 'Expense') return false;
+      if (accountFilter === 'Staff' && entry.partyType !== 'Staff') return false;
+      if (accountFilter === 'Expense' && entry.partyType !== 'Expense') return false;
+
+      // Party-specific filter
+      if (selectedPartyId !== 'ALL') {
+        if (entry.partyId && entry.partyId !== selectedPartyId) return false;
+        if (!entry.partyId && !entry.partyName.toLowerCase().includes(selectedPartyId.toLowerCase())) return false;
+      }
+
       // Payment mode filter
       if (paymentModeFilter !== 'ALL' && entry.paymentMode !== paymentModeFilter) return false;
       // Type filter
@@ -99,7 +111,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
       }
       return true;
     });
-  }, [ledgerEntries, accountFilter, paymentModeFilter, typeFilter, searchTerm]);
+  }, [ledgerEntries, accountFilter, selectedPartyId, paymentModeFilter, typeFilter, searchTerm]);
 
   // Overall Financial Aggregates
   const totalCredit = useMemo(() => ledgerEntries.reduce((sum, e) => sum + e.credit, 0), [ledgerEntries]);
@@ -323,6 +335,85 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* 3-Tier Core Ledger Tabs: All Accounts | Seller Ledger | Buyer Ledger | Agent Ledger */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-1.5 shadow-xs flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => {
+            setAccountFilter('ALL');
+            setSelectedPartyId('ALL');
+          }}
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            accountFilter === 'ALL'
+              ? 'bg-slate-900 dark:bg-emerald-600 text-white shadow-xs font-black'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Wallet className="w-3.5 h-3.5" />
+          <span>{language === 'ta' ? 'அனைத்து கணக்குகள்' : 'All Accounts'}</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {ledgerEntries.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setAccountFilter('Farmer');
+            setSelectedPartyId('ALL');
+          }}
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            accountFilter === 'Farmer'
+              ? 'bg-amber-600 text-white shadow-xs font-black'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <User className="w-3.5 h-3.5" />
+          <span>{language === 'ta' ? 'விவசாயி கணக்கு ஏடு (Seller Ledger)' : 'Seller (Farmer) Ledger'}</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {ledgerEntries.filter(e => e.partyType === 'Farmer').length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setAccountFilter('Buyer');
+            setSelectedPartyId('ALL');
+          }}
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            accountFilter === 'Buyer'
+              ? 'bg-blue-600 text-white shadow-xs font-black'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          <span>{language === 'ta' ? 'வியாபாரி கணக்கு ஏடு (Buyer Ledger)' : 'Buyer (Trader) Ledger'}</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {ledgerEntries.filter(e => e.partyType === 'Buyer').length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setAccountFilter('Mandi');
+            setSelectedPartyId('ALL');
+          }}
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            accountFilter === 'Mandi'
+              ? 'bg-purple-600 text-white shadow-xs font-black'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>{language === 'ta' ? 'முகவர் வருவாய் ஏடு (Agent Ledger)' : 'Agent (Mandi P&L) Ledger'}</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            {ledgerEntries.filter(e => e.partyType === 'Mandi' || e.partyType === 'Expense').length}
+          </span>
+        </button>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Search Input */}
@@ -351,6 +442,36 @@ export const LedgerView: React.FC<LedgerViewProps> = ({ onNavigate }) => {
 
         {/* Filter Pills */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Contextual Party Selector for Farmer or Buyer */}
+          {accountFilter === 'Farmer' && (
+            <select
+              value={selectedPartyId}
+              onChange={e => setSelectedPartyId(e.target.value)}
+              className="px-3 py-2 text-xs rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+            >
+              <option value="ALL">{language === 'ta' ? 'அனைத்து விவசாயிகள் (All Farmers)' : 'All Farmers / Sellers'}</option>
+              {sellers.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.village})
+                </option>
+              ))}
+            </select>
+          )}
+
+          {accountFilter === 'Buyer' && (
+            <select
+              value={selectedPartyId}
+              onChange={e => setSelectedPartyId(e.target.value)}
+              className="px-3 py-2 text-xs rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="ALL">{language === 'ta' ? 'அனைத்து வியாபாரிகள் (All Traders)' : 'All Wholesale Buyers'}</option>
+              {buyers.map(b => (
+                <option key={b.id} value={b.id}>
+                  [{b.paddleNumber}] {b.tradeName}
+                </option>
+              ))}
+            </select>
+          )}
           {/* Account Filter */}
           <select
             value={accountFilter}

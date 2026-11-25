@@ -6,6 +6,7 @@ interface PosThermalReceiptProps {
   transaction: AuctionTransaction;
   profile: MandiProfile;
   onClose: () => void;
+  onSwitchFormat?: (format: 'a5' | 'pos') => void;
 }
 
 const getTamilUnit = (itemType?: string, unit?: string) => {
@@ -26,9 +27,10 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
   transaction,
   profile,
   onClose,
+  onSwitchFormat,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Floating Toolbar */}
         <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
@@ -41,7 +43,18 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {onSwitchFormat && (
+              <button
+                type="button"
+                onClick={() => onSwitchFormat('a5')}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 cursor-pointer"
+                title="Switch to KVS A5 Sheet"
+              >
+                A5 Sheet
+              </button>
+            )}
             <button
+              type="button"
               onClick={() => window.print()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
             >
@@ -49,6 +62,7 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
               <span>Print POS</span>
             </button>
             <button
+              type="button"
               onClick={onClose}
               className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
