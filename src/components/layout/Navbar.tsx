@@ -140,7 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onToggleMobileMenu, 
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-emerald-900/10 dark:border-slate-800 shadow-xs px-2.5 sm:px-4 lg:px-6 py-2 flex items-center justify-between transition-colors duration-200 gap-2">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-emerald-900/10 dark:border-slate-800 shadow-xs px-2.5 sm:px-4 lg:px-6 py-2 flex items-center justify-between transition-colors duration-200 gap-2 shrink-0">
       {/* Left: Mobile Menu Toggle & Branding Dropdown */}
       <div className="flex items-center gap-1 sm:gap-2 min-w-0">
         {onToggleMobileMenu && (

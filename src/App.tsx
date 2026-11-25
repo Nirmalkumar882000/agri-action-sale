@@ -67,13 +67,13 @@ export const AppContent: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} transition-colors duration-200`}>
+    <div className={`h-screen max-h-screen flex flex-col overflow-hidden ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} transition-colors duration-200`}>
       <Navbar
         onNavigate={setCurrentPath}
         onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
         isMobileMenuOpen={mobileMenuOpen}
       />
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative min-h-0">
         {/* Mobile Sidebar Backdrop Overlay */}
         {mobileMenuOpen && (
           <div
@@ -88,7 +88,7 @@ export const AppContent: React.FC = () => {
           isOpen={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
         />
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0 h-full">
           {renderActiveView()}
         </main>
       </div>

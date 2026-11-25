@@ -172,12 +172,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 lg:static w-72 lg:w-72 flex flex-col shrink-0 select-none transition-transform duration-300 ease-in-out bg-[#061e16] text-white border-r border-emerald-950/80 shadow-2xl ${
+      className={`fixed inset-y-0 left-0 z-50 lg:static w-72 lg:w-72 flex flex-col shrink-0 select-none transition-transform duration-300 ease-in-out bg-[#061e16] text-white border-r border-emerald-950/80 shadow-2xl h-full max-h-full overflow-hidden ${
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       }`}
     >
       {/* Top Profile Card: Supervisor / Manager Info */}
-      <div className="p-3.5 mx-3 mt-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-between shadow-xs">
+      <div className="p-3.5 mx-3 mt-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-between shadow-xs shrink-0">
         <div
           onClick={() => handleNav('/profile')}
           className="flex items-center gap-3 cursor-pointer group min-w-0"
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
       </div>
 
       {/* Nav List with Clean Single-Line Items */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 sidebar-green-scroll">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 sidebar-green-scroll min-h-0">
         {sections.map(sec => (
           <div key={sec.titleEn} className="space-y-1">
             {/* Section Header */}
@@ -331,7 +331,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
       </div>
 
       {/* Footer Branding Info */}
-      <div className="p-3 border-t border-white/10 bg-black/25 text-[11px] text-emerald-200/80 flex items-center justify-between backdrop-blur-xs">
+      <div className="p-3 border-t border-white/10 bg-black/25 text-[11px] text-emerald-200/80 flex items-center justify-between backdrop-blur-xs shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-lg bg-emerald-600/40 flex items-center justify-center text-amber-300 shadow-xs">
             <Sparkles className="w-3.5 h-3.5" />
