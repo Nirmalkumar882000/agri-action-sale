@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Product, InwardLot, CommodityCategory, ProductItemType, ProductUnit } from '../types';
+import { Product, InwardLot, CommodityCategory, ProductItemType, ProductUnit, AuctionTransaction } from '../types';
 import {
   PackageCheck,
   Plus,
@@ -14,7 +14,17 @@ import {
   Boxes,
   Layers,
   Trash2,
+  Printer,
+  Receipt,
+  Eye,
+  Gavel,
+  Building2,
+  User,
+  Coins,
+  CheckCircle2,
 } from 'lucide-react';
+import { KvsA5Receipt } from '../components/receipts/KvsA5Receipt';
+import { PosThermalReceipt } from '../components/receipts/PosThermalReceipt';
 
 interface ProductsViewProps {
   onNavigate?: (path: string) => void;
@@ -130,22 +140,28 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
   const {
     t,
     language,
+    profile,
     products,
     addProduct,
     updateProduct,
     deleteProduct,
     lots,
     sellers,
+    transactions,
     addInwardLot,
     addNotification,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'varieties' | 'inward-lots'>('varieties');
   const [selectedFilter, setSelectedFilter] = useState<string>('All');
+  const [lotStatusFilter, setLotStatusFilter] = useState<'all' | 'available' | 'sold'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showInwardLotModal, setShowInwardLotModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [activeReceipt, setActiveReceipt] = useState<AuctionTransaction | null>(null);
+  const [receiptFormat, setReceiptFormat] = useState<'a5' | 'pos'>('a5');
+  const [selectedSoldLot, setSelectedSoldLot] = useState<{ lot: InwardLot; tx?: AuctionTransaction } | null>(null);
 
   // New Variety Form
   const [productForm, setProductForm] = useState({
@@ -204,12 +220,22 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
     return matchQuery;
   });
 
+  const availableLotsCount = lots.filter(l => l.availableQuantity > 0).length;
+  const soldLotsCount = lots.filter(l => l.availableQuantity === 0 || l.status === 'Sold').length;
+
   const filteredLots = lots.filter(l => {
-    const q = searchQuery.toLowerCase();
+    if (lotStatusFilter === 'available' && l.availableQuantity <= 0) return false;
+    if (lotStatusFilter === 'sold' && l.availableQuantity > 0 && l.status !== 'Sold') return false;
+
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
     return (
-      l.lotNumber.includes(q) ||
+      l.lotNumber.toLowerCase().includes(q) ||
+      `#${l.lotNumber}`.toLowerCase().includes(q) ||
       l.sellerName.toLowerCase().includes(q) ||
+      l.sellerVillage.toLowerCase().includes(q) ||
       l.productName.toLowerCase().includes(q) ||
+      l.productNameTamil.toLowerCase().includes(q) ||
       l.variety.toLowerCase().includes(q)
     );
   });
@@ -410,9 +436,16 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
               }`}
             >
               <span>{language === 'ta' ? 'வந்தடைந்த விளைபொருள் வரத்து' : 'Arrived Produce Lots'}</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300 font-black">
-                {lots.filter(l => l.availableQuantity > 0).length} Available
-              </span>
+              <div className="flex items-center gap-1 font-mono text-[10px]">
+                <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300 font-bold">
+                  {availableLotsCount} Avail
+                </span>
+                {soldLotsCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-bold">
+                    {soldLotsCount} Sold
+                  </span>
+                )}
+              </div>
             </button>
           </div>
 
@@ -594,64 +627,259 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
 
         {/* Tab 2: Arrived Inward Produce Lots */}
         {activeTab === 'inward-lots' && (
-          <div className="p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredLots.map(lot => {
-                const isAvailable = lot.availableQuantity > 0;
-                return (
-                  <div
-                    key={lot.id}
-                    className={`p-4 rounded-xl border transition-all ${
-                      isAvailable
-                        ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-500'
-                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 opacity-60'
-                    }`}
+          <div>
+            {/* Status Filter Sub-Bar (All, Available, Sold) */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                <span className="font-bold text-slate-500 dark:text-slate-400 shrink-0 mr-1">Status:</span>
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    lotStatusFilter === 'all'
+                      ? 'bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 shadow-xs'
+                      : 'bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>All Lots</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-mono">
+                    {lots.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('available')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    lotStatusFilter === 'available'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-850 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Available / இருப்பு</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-mono font-bold">
+                    {availableLotsCount}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('sold')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                    lotStatusFilter === 'sold'
+                      ? 'bg-amber-500 text-slate-950 shadow-xs'
+                      : 'bg-white dark:bg-slate-850 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-50'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>Sold Lots (விற்கப்பட்டவை)</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 dark:bg-amber-950 text-amber-950 dark:text-amber-200 font-mono font-bold">
+                    {soldLotsCount}
+                  </span>
+                </button>
+              </div>
+
+              {/* Inward Produce CTA */}
+              <button
+                type="button"
+                onClick={() => setShowInwardLotModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Inward Produce</span>
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {filteredLots.length === 0 ? (
+                <div className="text-center py-16 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-2">
+                  <span className="text-3xl block">📦</span>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    {lotStatusFilter === 'sold'
+                      ? 'No sold lots found.'
+                      : lotStatusFilter === 'available'
+                      ? 'No available lots remaining on the floor.'
+                      : 'No produce lots found.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLotStatusFilter('all');
+                      setSearchQuery('');
+                    }}
+                    className="text-xs font-bold text-emerald-600 hover:underline cursor-pointer"
                   >
-                    <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-sm">
-                        Lot #{lot.lotNumber}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          lot.status === 'Sold'
-                            ? 'bg-slate-200 dark:bg-slate-800 text-slate-600'
-                            : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300'
+                    View All Lots
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredLots.map(lot => {
+                    const isAvailable = lot.availableQuantity > 0 && lot.status !== 'Sold';
+                    // Find matching completed auction transaction for this lot
+                    const tx = transactions.find(t => t.lotId === lot.id || t.billNumber === lot.lotNumber);
+
+                    return (
+                      <div
+                        key={lot.id}
+                        className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
+                          isAvailable
+                            ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs hover:border-emerald-500'
+                            : 'bg-gradient-to-br from-amber-50/40 via-white to-slate-50 dark:from-slate-900 dark:via-slate-900 dark:to-amber-950/20 border-amber-300 dark:border-amber-900/60 shadow-xs'
                         }`}
                       >
-                        {lot.status}
-                      </span>
-                    </div>
+                        <div>
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between text-xs mb-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-sm">
+                                Lot #{lot.lotNumber}
+                              </span>
+                              {tx && (
+                                <span className="font-mono text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded-xs">
+                                  Bill #{tx.billNumber}
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                isAvailable
+                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300'
+                                  : 'bg-amber-500 text-slate-950 shadow-2xs'
+                              }`}
+                            >
+                              {isAvailable ? 'Available' : 'Sold / விற்கப்பட்டது'}
+                            </span>
+                          </div>
 
-                    <div className="space-y-1">
-                      <div className="font-black text-sm text-slate-900 dark:text-white">{lot.productName}</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 font-tamil">
-                        {lot.productNameTamil} • <span className="font-mono font-bold uppercase">{lot.variety}</span>
+                          {/* Produce Info */}
+                          <div className="space-y-1">
+                            <div className="font-black text-sm text-slate-900 dark:text-white">{lot.productName}</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-tamil">
+                              {lot.productNameTamil} • <span className="font-mono font-bold uppercase">{lot.variety}</span>
+                            </div>
+                            <div className="text-xs text-slate-600 dark:text-slate-300 pt-0.5">
+                              Farmer: <strong>{lot.sellerName}</strong> ({lot.sellerVillage})
+                            </div>
+                          </div>
+
+                          {/* Volume & Shed Line */}
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {isAvailable ? 'Available:' : 'Sold Volume:'}
+                            </span>
+                            <span className={`font-black text-sm ${isAvailable ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                              {isAvailable ? `${lot.availableQuantity} / ${lot.initialQuantity}` : `${lot.initialQuantity}`} {lot.unit}
+                            </span>
+                          </div>
+
+                          {/* If Sold: Individual Sold Details Box */}
+                          {!isAvailable && (
+                            <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50/70 dark:bg-slate-800/80 border border-amber-200/80 dark:border-amber-900/50 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                  Winning Trader (Buyer):
+                                </span>
+                                <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded-xs bg-amber-200 dark:bg-amber-900/80 text-amber-950 dark:text-amber-200">
+                                  {tx ? tx.buyerPaddle : 'Paddle'}
+                                </span>
+                              </div>
+
+                              <div className="font-extrabold text-slate-900 dark:text-white truncate">
+                                {tx ? tx.buyerTradeName : 'Wholesale Buyer'}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-amber-200/60 dark:border-slate-700/60 text-[11px] font-mono">
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block">Sold Rate:</span>
+                                  <span className="font-black text-emerald-700 dark:text-emerald-400">
+                                    {tx ? `₹${tx.ratePerUnit}/${lot.unit.split(' ')[0]}` : 'Floor Price'}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-[10px] text-slate-400 block">Gross Sale:</span>
+                                  <span className="font-black text-slate-900 dark:text-white">
+                                    {tx ? `₹${tx.grossAmount.toLocaleString('en-IN')}` : '₹0'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {tx && (
+                                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                  <span>Chit #{tx.chitNumber}</span>
+                                  <span>{tx.time} ({tx.date})</span>
+                                </div>
+                              )}
+
+                              {/* Sold Action Buttons: Dual Chit Print & Details */}
+                              <div className="flex items-center gap-1.5 pt-2 border-t border-amber-200/60 dark:border-slate-700/60">
+                                {tx ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveReceipt(tx);
+                                        setReceiptFormat('pos');
+                                      }}
+                                      className="flex-1 py-1 rounded-md bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-[10px] font-bold border border-slate-300 dark:border-slate-600 flex items-center justify-center gap-1 cursor-pointer"
+                                      title="Print 80mm Thermal POS Receipt"
+                                    >
+                                      <Printer className="w-3 h-3 text-slate-600 dark:text-slate-300" />
+                                      <span>POS Chit</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveReceipt(tx);
+                                        setReceiptFormat('a5');
+                                      }}
+                                      className="flex-1 py-1 rounded-md bg-emerald-100 dark:bg-emerald-950 hover:bg-emerald-200 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800 flex items-center justify-center gap-1 cursor-pointer"
+                                      title="Print KVS A5 Sheet Bill"
+                                    >
+                                      <Printer className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
+                                      <span>A5 Sheet</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedSoldLot({ lot, tx })}
+                                      className="p-1 rounded-md bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 cursor-pointer"
+                                      title="View Individual Sold Audit & Breakdown"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSoldLot({ lot })}
+                                    className="w-full py-1 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold cursor-pointer"
+                                  >
+                                    View Lot Details
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Available Produce CTA */}
+                        {isAvailable && onNavigate && (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate('/offline/live')}
+                            className="mt-3 w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
+                          >
+                            <Gavel className="w-3.5 h-3.5 fill-slate-950" />
+                            <span>Call in Floor Auction</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-300 pt-1">
-                        Farmer: <strong>{lot.sellerName}</strong> ({lot.sellerVillage})
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-500 dark:text-slate-400">Available:</span>
-                      <span className="font-black text-emerald-700 dark:text-emerald-400 text-sm">
-                        {lot.availableQuantity} / {lot.initialQuantity} {lot.unit}
-                      </span>
-                    </div>
-
-                    {isAvailable && onNavigate && (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('/offline/live')}
-                        className="mt-3 w-full py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform active:scale-95 cursor-pointer"
-                      >
-                        <span>Call in Floor Auction</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -976,6 +1204,192 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Individual Sold Lot Audit & Settlement Breakdown Modal */}
+      {selectedSoldLot && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 bg-gradient-to-r from-emerald-800 to-green-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-amber-300" />
+                <div>
+                  <h3 className="font-extrabold text-sm">
+                    Sold Lot #{selectedSoldLot.lot.lotNumber} • Settlement Audit
+                  </h3>
+                  <p className="text-[11px] text-emerald-200 font-tamil">
+                    {selectedSoldLot.lot.productNameTamil} ({selectedSoldLot.lot.variety})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSoldLot(null)}
+                className="p-1 rounded-md text-emerald-200 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              {/* Top Banner Status */}
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-amber-800 dark:text-amber-400">Auction Result:</span>
+                  <div className="text-sm font-black text-slate-900 dark:text-white">
+                    {selectedSoldLot.tx ? 'Successfully Sold on Floor' : 'Marked as Sold'}
+                  </div>
+                </div>
+                {selectedSoldLot.tx && (
+                  <div className="text-right font-mono">
+                    <span className="text-[10px] text-slate-400">Bill Number:</span>
+                    <div className="font-black text-emerald-700 dark:text-emerald-400">
+                      #{selectedSoldLot.tx.billNumber}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2-Column: Farmer & Trader Info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Farmer Box */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                    <User className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Farmer (Seller / வழங்குபவர்)</span>
+                  </div>
+                  <div className="font-bold text-slate-900 dark:text-white">
+                    {selectedSoldLot.lot.sellerName}
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Village: {selectedSoldLot.lot.sellerVillage}
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px] font-mono">
+                    Mobile: {selectedSoldLot.lot.sellerMobile || 'N/A'}
+                  </div>
+                </div>
+
+                {/* Trader Box */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase">
+                    <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Winning Buyer (வியாபாரி)</span>
+                  </div>
+                  <div className="font-bold text-slate-900 dark:text-white truncate">
+                    {selectedSoldLot.tx ? selectedSoldLot.tx.buyerTradeName : 'Wholesale Buyer'}
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px] font-mono">
+                    Paddle: <strong className="text-amber-600 dark:text-amber-400">{selectedSoldLot.tx ? selectedSoldLot.tx.buyerPaddle : 'P-01'}</strong>
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                    Time: {selectedSoldLot.tx ? `${selectedSoldLot.tx.time} (${selectedSoldLot.tx.date})` : 'Floor Auction'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Calculation Audit */}
+              {selectedSoldLot.tx ? (
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2 font-mono">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                    <span>Mandi Sale Calculation Breakdown</span>
+                    <span>Rate: ₹{selectedSoldLot.tx.ratePerUnit}/{selectedSoldLot.lot.unit.split(' ')[0]}</span>
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600 dark:text-slate-400">
+                        Gross Volume ({selectedSoldLot.tx.quantity} {selectedSoldLot.lot.unit}):
+                      </span>
+                      <strong className="text-slate-900 dark:text-white">
+                        ₹{selectedSoldLot.tx.grossAmount.toLocaleString('en-IN')}
+                      </strong>
+                    </div>
+
+                    <div className="flex justify-between text-red-600 dark:text-red-400 text-[11px]">
+                      <span>- Mandi Commission:</span>
+                      <span>₹{selectedSoldLot.tx.commissionAmount.toLocaleString('en-IN')}</span>
+                    </div>
+
+                    <div className="flex justify-between text-red-600 dark:text-red-400 text-[11px]">
+                      <span>- Coolie / Loading:</span>
+                      <span>₹{selectedSoldLot.tx.coolieAmount.toLocaleString('en-IN')}</span>
+                    </div>
+
+                    <div className="flex justify-between text-red-600 dark:text-red-400 text-[11px]">
+                      <span>- Platform Rent & Magimai:</span>
+                      <span>₹{(selectedSoldLot.tx.rentAmount + selectedSoldLot.tx.magimaiAmount).toLocaleString('en-IN')}</span>
+                    </div>
+
+                    <div className="flex justify-between pt-1.5 border-t border-slate-200 dark:border-slate-700 font-bold text-sm">
+                      <span className="text-emerald-800 dark:text-emerald-400">Net Farmer Payout:</span>
+                      <span className="text-emerald-800 dark:text-emerald-400">
+                        ₹{selectedSoldLot.tx.netFarmerPayable.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-center">
+                  Original auction transaction record archived.
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                {selectedSoldLot.tx && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveReceipt(selectedSoldLot.tx!);
+                        setReceiptFormat('pos');
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print 80mm POS Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveReceipt(selectedSoldLot.tx!);
+                        setReceiptFormat('a5');
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print KVS A5 Sheet</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedSoldLot(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Instant Print Preview Modal for KVS A5 Sheet or POS Bill */}
+      {activeReceipt && (
+        receiptFormat === 'a5' ? (
+          <KvsA5Receipt
+            transaction={activeReceipt}
+            profile={profile}
+            onClose={() => setActiveReceipt(null)}
+          />
+        ) : (
+          <PosThermalReceipt
+            transaction={activeReceipt}
+            profile={profile}
+            onClose={() => setActiveReceipt(null)}
+          />
+        )
       )}
     </div>
   );
