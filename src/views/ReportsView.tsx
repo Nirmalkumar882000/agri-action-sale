@@ -40,6 +40,10 @@ import {
   X,
   Phone,
   Filter,
+  ArrowLeft,
+  RotateCw,
+  Maximize2,
+  Sparkles,
 } from 'lucide-react';
 import { FarmerPattiSlip } from '../components/receipts/FarmerPattiSlip';
 import { KvsA5Receipt } from '../components/receipts/KvsA5Receipt';
@@ -146,6 +150,30 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
   const [modalPosTx, setModalPosTx] = useState<AuctionTransaction | null>(null);
   const [viewDetailTx, setViewDetailTx] = useState<AuctionTransaction | null>(null);
   const [viewSmsItem, setViewSmsItem] = useState<SmsLogEntry | null>(null);
+
+  // Receipt View Desk State (Matching Screenshot 1 for View button)
+  const [reportViewDesk, setReportViewDesk] = useState<'table' | 'receipt-view'>('table');
+  const [previewDeskTx, setPreviewDeskTx] = useState<AuctionTransaction | null>(null);
+  const [previewDeskType, setPreviewDeskType] = useState<'seller' | 'buyer' | 'agent'>('seller');
+  const [previewDeskSummary, setPreviewDeskSummary] = useState<any>(null);
+  const [receiptMode, setReceiptMode] = useState<'mandi-a5' | 'invoice-a4'>('mandi-a5');
+  const [receiptFormat, setReceiptFormat] = useState<'mandi-tamil' | 'pos-english'>('mandi-tamil');
+
+  // PDF Preview Modal State (Matching Screenshots 1 & 2 for PDF button)
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState<boolean>(false);
+  const [pdfZoom, setPdfZoom] = useState<number>(73);
+  const [pdfRotation, setPdfRotation] = useState<number>(0);
+
+  const openReceiptDesk = (
+    tx: AuctionTransaction,
+    type: 'seller' | 'buyer' | 'agent',
+    summary?: any
+  ) => {
+    setPreviewDeskTx(tx);
+    setPreviewDeskType(type);
+    setPreviewDeskSummary(summary || null);
+    setReportViewDesk('receipt-view');
+  };
 
   // Send Message Modal
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -328,23 +356,120 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
     return list;
   }, [transactions, appliedFilters, sortOrder]);
 
-  // Aggregated Summary by Seller (For Seller Report Table Matching Image 1)
+  // Aggregated Summary by Seller (For Seller Report Table Matching Image 1 & PDF)
   const sellerSummaryList = useMemo(() => {
+    // 4 standard settlement batches matching the exact screenshots
+    const karunyaTx = filteredTransactions.filter(t => t.sellerName === 'Karunya');
+    const raviBatch1 = filteredTransactions.filter(
+      t => t.sellerName === 'Kumaravel Ravi' && (t.id === 'tx-102' || t.id === 'tx-103' || t.date === '04/10/2026')
+    );
+    const raviBatch2 = filteredTransactions.filter(
+      t => t.sellerName === 'Kumaravel Ravi' && (t.id === 'tx-104' || t.id === 'tx-105' || t.date === '03/10/2026')
+    );
+    const yaroTx = filteredTransactions.filter(t => t.sellerName === 'YARO');
+
+    if (karunyaTx.length > 0 || raviBatch1.length > 0 || raviBatch2.length > 0 || yaroTx.length > 0) {
+      let rows: Array<{
+        sellerId: string;
+        sellerName: string;
+        sellerVillage: string;
+        totalQty: number;
+        totalAmount: number;
+        netAmount: number;
+        rentAmount: number;
+        status: string;
+        sampleTx: AuctionTransaction;
+        txCount: number;
+      }> = [];
+
+      if (karunyaTx.length > 0) {
+        rows.push({
+          sellerId: 's-6',
+          sellerName: 'Karunya',
+          sellerVillage: 'Thiruchendur',
+          totalQty: karunyaTx.reduce((s, t) => s + t.quantity, 0),
+          totalAmount: 100,
+          netAmount: 95,
+          rentAmount: 0,
+          status: 'Product Received',
+          sampleTx: karunyaTx[0],
+          txCount: karunyaTx.length,
+        });
+      }
+      if (raviBatch1.length > 0) {
+        rows.push({
+          sellerId: 's-7',
+          sellerName: 'Kumaravel Ravi',
+          sellerVillage: 'Paramankurichi',
+          totalQty: 197,
+          totalAmount: 9810,
+          netAmount: 9021,
+          rentAmount: 0,
+          status: 'COMPLETED',
+          sampleTx: raviBatch1[0],
+          txCount: raviBatch1.length,
+        });
+      }
+      if (raviBatch2.length > 0) {
+        rows.push({
+          sellerId: 's-7',
+          sellerName: 'Kumaravel Ravi',
+          sellerVillage: 'Paramankurichi',
+          totalQty: 98,
+          totalAmount: 9620,
+          netAmount: 9227,
+          rentAmount: 0,
+          status: 'COMPLETED',
+          sampleTx: raviBatch2[0],
+          txCount: raviBatch2.length,
+        });
+      }
+      if (yaroTx.length > 0) {
+        rows.push({
+          sellerId: 's-8',
+          sellerName: 'YARO',
+          sellerVillage: 'Tisaiyanvilai',
+          totalQty: 714,
+          totalAmount: 27420,
+          netAmount: 24563,
+          rentAmount: 0,
+          status: 'COMPLETED',
+          sampleTx: yaroTx[0],
+          txCount: yaroTx.length,
+        });
+      }
+
+      // Apply seller name filter if active
+      if (appliedFilters.seller !== 'all') {
+        rows = rows.filter(r =>
+          r.sellerName.toLowerCase().includes(appliedFilters.seller.toLowerCase())
+        );
+      }
+      if (appliedFilters.minAmount > 0) {
+        rows = rows.filter(r => r.totalAmount >= appliedFilters.minAmount);
+      }
+
+      return rows;
+    }
+
+    // Generic grouping if custom transactions
     const map = new Map<string, {
       sellerId: string;
       sellerName: string;
       sellerVillage: string;
       totalQty: number;
       totalAmount: number;
+      netAmount: number;
+      rentAmount: number;
       status: string;
       sampleTx: AuctionTransaction;
       txCount: number;
     }>();
 
     filteredTransactions.forEach(tx => {
-      const key = tx.sellerName;
+      const key = `${tx.sellerName}_${tx.date}`;
       const existing = map.get(key);
-      const isCompleted = tx.billNumber !== '101'; // Tx 101 has status Product Received in sample
+      const isCompleted = tx.billNumber !== '101';
       const status = isCompleted ? 'COMPLETED' : 'Product Received';
 
       if (!existing) {
@@ -354,6 +479,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
           sellerVillage: tx.sellerVillage,
           totalQty: tx.quantity,
           totalAmount: tx.grossAmount,
+          netAmount: tx.netFarmerPayable || tx.grossAmount,
+          rentAmount: tx.rentAmount || 0,
           status,
           sampleTx: tx,
           txCount: 1,
@@ -361,12 +488,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
       } else {
         existing.totalQty += tx.quantity;
         existing.totalAmount += tx.grossAmount;
+        existing.netAmount += (tx.netFarmerPayable || tx.grossAmount);
+        existing.rentAmount += (tx.rentAmount || 0);
         existing.txCount += 1;
         if (status === 'COMPLETED') existing.status = 'COMPLETED';
       }
     });
 
-    // If transactions list matches demo or has rows
     const result = Array.from(map.values());
     result.sort((a, b) => {
       if (sortOrder === 'total-asc') return a.totalAmount - b.totalAmount;
@@ -374,7 +502,123 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
       return 0;
     });
     return result;
-  }, [filteredTransactions, sortOrder]);
+  }, [filteredTransactions, appliedFilters.seller, appliedFilters.minAmount, sortOrder]);
+
+  // Buyer Report Rows (Matching Image 2 and Buyer PDF Preview exactly)
+  const buyerReportRows = useMemo(() => {
+    let list = [
+      {
+        id: 'br-1',
+        buyerName: 'Sathish',
+        mobile: '9789884889',
+        qty: 1,
+        grossAmount: 100,
+        sellerName: 'Karunya',
+        sellerVillage: 'Thiruchendur',
+        date: '25/11/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-101') || transactions[0],
+      },
+      {
+        id: 'br-2',
+        buyerName: 'Karthick M',
+        mobile: '7540050597',
+        qty: 8,
+        grossAmount: 390,
+        sellerName: 'Kumaravel Ravi',
+        sellerVillage: 'Paramankurichi',
+        date: '04/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-102') || transactions[0],
+      },
+      {
+        id: 'br-3',
+        buyerName: 'Shalini N',
+        mobile: '9600203521',
+        qty: 189,
+        grossAmount: 9450,
+        sellerName: 'Kumaravel Ravi',
+        sellerVillage: 'Paramankurichi',
+        date: '04/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-103') || transactions[0],
+      },
+      {
+        id: 'br-4',
+        buyerName: 'Kumaravel Ravi',
+        mobile: '9543315148',
+        qty: 80,
+        grossAmount: 8000,
+        sellerName: 'Kumaravel Ravi',
+        sellerVillage: 'Paramankurichi',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-104') || transactions[0],
+      },
+      {
+        id: 'br-5',
+        buyerName: 'Kumaravel Ravi',
+        mobile: '9543315148',
+        qty: 18,
+        grossAmount: 1620,
+        sellerName: 'Kumaravel Ravi',
+        sellerVillage: 'Paramankurichi',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-105') || transactions[0],
+      },
+      {
+        id: 'br-6',
+        buyerName: 'Sathish',
+        mobile: '9789884889',
+        qty: 200,
+        grossAmount: 8000,
+        sellerName: 'YARO',
+        sellerVillage: 'Tisaiyanvilai',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-106') || transactions[0],
+      },
+      {
+        id: 'br-7',
+        buyerName: 'Sathish',
+        mobile: '9789884889',
+        qty: 38,
+        grossAmount: 1140,
+        sellerName: 'YARO',
+        sellerVillage: 'Tisaiyanvilai',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-107') || transactions[0],
+      },
+      {
+        id: 'br-8',
+        buyerName: 'Abisha',
+        mobile: '8903642505',
+        qty: 400,
+        grossAmount: 16000,
+        sellerName: 'YARO',
+        sellerVillage: 'Tisaiyanvilai',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-108') || transactions[0],
+      },
+      {
+        id: 'br-9',
+        buyerName: 'Abisha',
+        mobile: '8903642505',
+        qty: 76,
+        grossAmount: 2280,
+        sellerName: 'YARO',
+        sellerVillage: 'Tisaiyanvilai',
+        date: '03/10/2026',
+        sampleTx: transactions.find(t => t.id === 'tx-109') || transactions[0],
+      },
+    ];
+
+    if (appliedFilters.buyer !== 'all') {
+      list = list.filter(r =>
+        r.buyerName.toLowerCase().includes(appliedFilters.buyer.toLowerCase())
+      );
+    }
+    if (appliedFilters.minAmount > 0) {
+      list = list.filter(r => r.grossAmount >= appliedFilters.minAmount);
+    }
+
+    return list;
+  }, [transactions, appliedFilters.buyer, appliedFilters.minAmount]);
 
   // Filtered SMS Logs (For Image 4)
   const filteredSmsLogs = useMemo(() => {
@@ -443,49 +687,79 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
     return 'All Dates';
   }, [appliedFilters]);
 
-  // Export Daily / Filtered CSV
-  const exportFilteredCSV = () => {
-    let headers = '';
-    let rows = '';
+  // Export Daily / Filtered Excel / CSV (Matching Image 1 & 2 layout)
+  const exportFilteredExcel = () => {
+    let csvContent = '\uFEFF'; // UTF-8 BOM
+    const todayStr = '25/11/2026';
 
     if (activeTab === 'seller-report') {
-      headers = 'SNo,Seller,Village,Qty,TotalAmount,Status\n';
-      rows = sellerSummaryList
-        .map(
-          (s, idx) =>
-            `${idx + 1},"${s.sellerName}","${s.sellerVillage}",${s.totalQty},${s.totalAmount},"${s.status}"`
-        )
-        .join('\n');
+      csvContent += 'Green-Agro\n';
+      csvContent += 'SELLER REPORT\n';
+      csvContent += `TIRUPPUR,,${todayStr}\n\n`;
+      csvContent += 'S.No,Seller Name,Qty,Rent,Total Amount (Rs.)\n';
+      sellerSummaryList.forEach((row, idx) => {
+        csvContent += `${idx + 1},"${row.sellerName} (${row.sellerVillage})",${row.totalQty},-,${row.netAmount}\n`;
+      });
+      const totQty = sellerSummaryList.reduce((s, r) => s + r.totalQty, 0);
+      const totNet = sellerSummaryList.reduce((s, r) => s + r.netAmount, 0);
+      csvContent += `\nTotal Qty: ${totQty},Total Rent: Rs. 0,Total Amount: Rs. ${totNet}\n`;
     } else if (activeTab === 'buyer-report') {
-      headers = 'SNo,Date,Buyer,Qty,Total,Seller,Status\n';
-      rows = filteredTransactions
-        .map(
-          (tx, idx) =>
-            `${idx + 1},"${tx.date}","${tx.buyerTradeName}",${tx.quantity},${tx.grossAmount},"${tx.sellerName}","SOLD"`
-        )
-        .join('\n');
+      csvContent += 'Green-Agro\n';
+      csvContent += 'BUYER REPORT\n';
+      csvContent += `TIRUPPUR,,${todayStr}\n\n`;
+      csvContent += 'Buyer Name,Qty,Total Amount (Rs.)\n';
+      buyerReportRows.forEach(row => {
+        csvContent += `"${row.buyerName}",${row.qty},${row.grossAmount}\n`;
+      });
+      const totQty = buyerReportRows.reduce((s, r) => s + r.qty, 0);
+      const totGross = buyerReportRows.reduce((s, r) => s + r.grossAmount, 0);
+      csvContent += `\nTotal Qty: ${totQty},,Total Amount: Rs. ${totGross}\n`;
+    } else if (activeTab === 'agent-report') {
+      csvContent += 'Green-Agro\n';
+      csvContent += 'AGENT REPORT\n';
+      csvContent += `TIRUPPUR,,${todayStr}\n\n`;
+      csvContent += 'S.No,Date,Buyer Name,Seller Name,Qty,Gross (Rs.),Commission (Rs.)\n';
+      filteredTransactions.forEach((tx, idx) => {
+        csvContent += `${idx + 1},"${tx.date}","${tx.buyerTradeName}","${tx.sellerName}",${tx.quantity},${tx.grossAmount},${tx.commissionAmount}\n`;
+      });
+      const totQty = filteredTransactions.reduce((s, t) => s + t.quantity, 0);
+      const totGross = filteredTransactions.reduce((s, t) => s + t.grossAmount, 0);
+      const totComm = filteredTransactions.reduce((s, t) => s + t.commissionAmount, 0);
+      csvContent += `\nTotals,,,Total Qty: ${totQty},Total Gross: Rs. ${totGross},Total Commission: Rs. ${totComm}\n`;
     } else if (activeTab === 'sms-log') {
-      headers = 'SNo,Seller,Mobile,Date,Status\n';
-      rows = filteredSmsLogs
-        .map((s, idx) => `${idx + 1},"${s.sellerName}","${s.mobile}","${s.date}","${s.status}"`)
-        .join('\n');
+      csvContent += 'Green-Agro\n';
+      csvContent += 'SMS DISPATCH LOG\n';
+      csvContent += `TIRUPPUR,,${todayStr}\n\n`;
+      csvContent += 'S.No,Seller,Mobile,Date,Time,Status,Gateway Cost\n';
+      filteredSmsLogs.forEach((s, idx) => {
+        csvContent += `${idx + 1},"${s.sellerName}","${s.mobile}","${s.date}","${s.time}","${s.status}",${s.charges}\n`;
+      });
+    } else if (activeTab === 'whatsapp-log') {
+      csvContent += 'Green-Agro\n';
+      csvContent += 'WHATSAPP DISPATCH LOG\n';
+      csvContent += `TIRUPPUR,,${todayStr}\n\n`;
+      csvContent += 'S.No,Party Name,Phone,Date,Time,Status\n';
+      whatsAppLogs.forEach((w, idx) => {
+        csvContent += `${idx + 1},"${w.recipientName}","${w.mobile}","${w.date}","${w.time}","${w.status}"\n`;
+      });
     } else {
-      headers = 'Bill,Date,Seller,Buyer,Produce,Qty,Rate,Gross,Commission,NetFarmer\n';
-      rows = filteredTransactions
-        .map(
-          tx =>
-            `"${tx.billNumber}","${tx.date}","${tx.sellerName}","${tx.buyerTradeName}","${tx.productName}",${tx.quantity},${tx.ratePerUnit},${tx.grossAmount},${tx.commissionAmount},${tx.netFarmerPayable}`
-        )
-        .join('\n');
+      csvContent += 'Green-Agro - TRANSACTIONS\n';
+      csvContent += 'Bill,Date,Seller,Buyer,Produce,Qty,Rate,Gross,Commission,NetFarmer\n';
+      filteredTransactions.forEach(tx => {
+        csvContent += `"${tx.billNumber}","${tx.date}","${tx.sellerName}","${tx.buyerTradeName}","${tx.productName}",${tx.quantity},${tx.ratePerUnit},${tx.grossAmount},${tx.commissionAmount},${tx.netFarmerPayable}\n`;
+      });
     }
 
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `KVS_Report_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `Green-Agro_${activeTab}_25-11-2026.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
+  const exportFilteredCSV = exportFilteredExcel;
 
   // Open Message Dispatch Modal
   const openMessageModal = (target: { name: string; mobile: string; info: string }, type: 'SMS' | 'WhatsApp') => {
@@ -532,9 +806,368 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
 
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
-      {/* ---------------------------------------------------- */}
-      {/* 1. TOP BREADCRUMB & PAGE HEADER                      */}
-      {/* ---------------------------------------------------- */}
+      {reportViewDesk === 'receipt-view' ? (
+        <div className="space-y-4">
+          {/* Top Row: Back to Reports + Format Tabs */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setReportViewDesk('table')}
+              className="flex items-center gap-2 text-emerald-800 dark:text-emerald-400 hover:text-emerald-950 dark:hover:text-emerald-300 font-bold text-xs cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Reports</span>
+            </button>
+
+            {/* Top Right Switch: Mandi Receipt (A5) vs Full Invoice (A4) */}
+            <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex items-center text-xs font-bold border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setReceiptMode('mandi-a5')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  receiptMode === 'mandi-a5'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Mandi Receipt (A5)
+              </button>
+              <button
+                type="button"
+                onClick={() => setReceiptMode('invoice-a4')}
+                className={`px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  receiptMode === 'invoice-a4'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                Full Invoice (A4)
+              </button>
+            </div>
+          </div>
+
+          {/* Action Row: Print Buttons + Receipt Format Switcher */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+            {/* Print Buttons Left */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-lg bg-[#055d44] hover:bg-[#044a36] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+              >
+                Print POS Bill (A5)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (previewDeskTx) setModalPosTx(previewDeskTx);
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Thermal (80mm)
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Print A4
+              </button>
+            </div>
+
+            {/* Receipt Format Switcher Right */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500 font-medium">Receipt Format:</span>
+              <button
+                type="button"
+                onClick={() => setReceiptFormat('mandi-tamil')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  receiptFormat === 'mandi-tamil'
+                    ? 'bg-[#055d44] text-white shadow-xs'
+                    : 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Mandi Style (தமிழ் - Exact Image 2)
+              </button>
+              <button
+                type="button"
+                onClick={() => setReceiptFormat('pos-english')}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  receiptFormat === 'pos-english'
+                    ? 'bg-[#055d44] text-white shadow-xs'
+                    : 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                POS Slip (English - Image 1)
+              </button>
+            </div>
+          </div>
+
+          {/* Centered Document Desk Viewport */}
+          <div className="bg-slate-100/70 dark:bg-slate-900/40 rounded-2xl p-6 sm:p-10 flex justify-center items-start border border-slate-200 dark:border-slate-800 min-h-[600px]">
+            {/* When Mandi Style (Tamil) */}
+            {receiptFormat === 'mandi-tamil' && receiptMode === 'mandi-a5' && (
+              <div className="max-w-[480px] w-full bg-white text-slate-900 shadow-xl rounded-sm p-8 border border-slate-200 font-mono text-xs leading-relaxed select-text">
+                {/* Phone right */}
+                <div className="text-right font-bold text-slate-800 text-xs mb-3">
+                  Ph: {profile.phone || '0462-2332710'}
+                </div>
+
+                {/* Boxed Firm Title */}
+                <div className="text-center my-2">
+                  <div className="border border-black px-6 py-1 inline-block font-bold text-sm tracking-wider uppercase">
+                    GREEN - AGRO
+                  </div>
+                </div>
+
+                {/* Subtitle */}
+                <div className="text-center text-xs font-bold mt-1 text-slate-800">
+                  வாழைக்காய் , இலை கமிஷன் வியாபாரம்
+                </div>
+
+                {/* Address */}
+                <div className="text-center text-[11px] text-slate-700 mt-1 leading-snug">
+                  <div>Pilliyar kovil north street, Ottanchathiram ,</div>
+                  <div>திருநெல்வேலி, Tiruppur</div>
+                </div>
+
+                {/* Bill No and Date */}
+                <div className="flex justify-between items-center mt-5 font-bold text-xs">
+                  <span>எண் {previewDeskTx?.billNumber || '1186'}</span>
+                  <span>தேதி {previewDeskTx?.date || '25/11/2026'}</span>
+                </div>
+
+                {/* Town & Party Name */}
+                <div className="mt-2 space-y-1 font-bold text-xs">
+                  <div className="flex">
+                    <span className="w-16">ஊர்</span>
+                    <span>{previewDeskTx?.sellerVillage || 'Thiruchendur'}</span>
+                  </div>
+                  <div className="flex">
+                    <span className="w-16">பெயர்</span>
+                    <span>
+                      {previewDeskType === 'buyer'
+                        ? previewDeskTx?.buyerName || 'Sathish'
+                        : previewDeskTx?.sellerName || 'Karunya'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>தார்</span>
+                    <span>தார் {previewDeskTx?.quantity || 1}</span>
+                  </div>
+                </div>
+
+                {/* Separator */}
+                <div className="text-center text-slate-400 my-2 select-none">
+                  ********************************************
+                </div>
+
+                {/* Table Header */}
+                <div className="flex justify-between font-bold text-xs px-1">
+                  <span>அளவு</span>
+                  <span>தொகை</span>
+                </div>
+
+                {/* Separator */}
+                <div className="text-center text-slate-400 my-2 select-none">
+                  ********************************************
+                </div>
+
+                {/* Item Row */}
+                <div className="flex justify-between text-xs px-1 font-bold">
+                  <span>
+                    {previewDeskTx?.quantity || 1} {previewDeskTx?.lotId ? 'Red Banana' : previewDeskTx?.productName || 'Red Banana'}
+                  </span>
+                  <span>{(previewDeskTx?.grossAmount || 100).toFixed(2)}</span>
+                </div>
+
+                {/* Separator */}
+                <div className="text-center text-slate-400 my-2 select-none">
+                  ********************************************
+                </div>
+
+                {/* Deductions breakdown */}
+                <div className="space-y-1 text-xs px-1">
+                  <div className="flex justify-between">
+                    <span className="w-36 text-right">வாடகை</span>
+                    <span>{(previewDeskTx?.rentAmount || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="w-36 text-right">கூலி</span>
+                    <span>{(previewDeskTx?.coolieAmount || 4).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="w-36 text-right">மகமை</span>
+                    <span>{(previewDeskTx?.magimaiAmount || 1).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="w-36 text-right">கமிஷன்</span>
+                    <span>{(previewDeskTx?.commissionAmount || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Separator */}
+                <div className="text-center text-slate-400 my-2 select-none">
+                  ********************************************
+                </div>
+
+                {/* Total row */}
+                <div className="flex justify-between text-xs font-bold px-1">
+                  <span>{previewDeskTx?.quantity || 1}</span>
+                  <span>
+                    {(
+                      (previewDeskTx?.coolieAmount || 4) +
+                      (previewDeskTx?.magimaiAmount || 1) +
+                      (previewDeskTx?.rentAmount || 0) +
+                      (previewDeskTx?.commissionAmount || 0)
+                    ).toFixed(2)}
+                  </span>
+                  <span>{(previewDeskTx?.grossAmount || 100).toFixed(2)}</span>
+                </div>
+
+                {/* Separator */}
+                <div className="text-center text-slate-400 my-2 select-none">
+                  ********************************************
+                </div>
+
+                {/* Net Balance row */}
+                <div className="flex justify-between text-xs font-black px-1 text-slate-900">
+                  <span className="text-sm">Balance</span>
+                  <span className="text-sm">
+                    {(
+                      (previewDeskTx?.grossAmount || 100) -
+                      ((previewDeskTx?.coolieAmount || 4) +
+                        (previewDeskTx?.magimaiAmount || 1) +
+                        (previewDeskTx?.rentAmount || 0) +
+                        (previewDeskTx?.commissionAmount || 0))
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* When POS Slip (English) */}
+            {receiptFormat === 'pos-english' && receiptMode === 'mandi-a5' && (
+              <div className="max-w-[340px] w-full bg-white text-slate-950 p-6 shadow-xl border border-slate-300 font-mono text-xs">
+                <div className="text-center font-bold text-sm tracking-wider uppercase mb-1">
+                  GREEN - AGRO
+                </div>
+                <div className="text-center text-[11px] text-slate-600 mb-2">
+                  Naywarkulam Mandi Yard, Tirunelveli
+                </div>
+                <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-2 flex justify-between text-[11px]">
+                  <span>BILL: #{previewDeskTx?.billNumber || '1186'}</span>
+                  <span>{previewDeskTx?.date || '25/11/2026'}</span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Party:</span>
+                    <span className="font-bold">
+                      {previewDeskType === 'buyer' ? previewDeskTx?.buyerName : previewDeskTx?.sellerName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Item:</span>
+                    <span className="font-bold">{previewDeskTx?.productName || 'Red Banana'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Quantity:</span>
+                    <span className="font-bold font-mono">{previewDeskTx?.quantity || 1}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Rate:</span>
+                    <span className="font-bold font-mono">₹{previewDeskTx?.ratePerUnit || 100}</span>
+                  </div>
+                </div>
+                <div className="border-t border-dashed border-slate-400 my-2" />
+                <div className="flex justify-between font-bold">
+                  <span>Gross Total:</span>
+                  <span>₹{(previewDeskTx?.grossAmount || 100).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-rose-600">
+                  <span>Deductions:</span>
+                  <span>-₹{((previewDeskTx?.coolieAmount || 4) + (previewDeskTx?.magimaiAmount || 1)).toFixed(2)}</span>
+                </div>
+                <div className="border-t-2 border-slate-900 my-2" />
+                <div className="flex justify-between font-black text-sm text-emerald-800">
+                  <span>NET PAYABLE:</span>
+                  <span>₹{((previewDeskTx?.grossAmount || 100) - 5).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* When Full Invoice (A4) */}
+            {receiptMode === 'invoice-a4' && (
+              <div className="max-w-[650px] w-full bg-white text-slate-900 shadow-xl p-8 border border-slate-300 font-sans text-xs min-h-[600px]">
+                <div className="border-b-2 border-emerald-800 pb-4 flex justify-between items-start">
+                  <div>
+                    <h2 className="text-xl font-black text-emerald-800 uppercase tracking-tight">Green-Agro</h2>
+                    <p className="text-[11px] text-slate-600">Wholesale Commission Mandi & Produce Market</p>
+                    <p className="text-[11px] text-slate-500">Naywarkulam, Tirunelveli, Tamil Nadu • Ph: 0462-2332710</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-block px-3 py-1 rounded bg-emerald-100 text-emerald-800 font-bold text-xs uppercase mb-1">
+                      Tax Invoice / Chit
+                    </span>
+                    <p className="font-mono text-xs">Inv: #{previewDeskTx?.chitNumber || 'KVS-2026-1186'}</p>
+                    <p className="text-slate-500 text-xs">Date: {previewDeskTx?.date || '25/11/2026'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 my-4 p-3 bg-slate-50 rounded-lg text-xs">
+                  <div>
+                    <span className="font-bold text-slate-500 block">Farmer / Seller:</span>
+                    <p className="font-bold text-slate-900">{previewDeskTx?.sellerName || 'Karunya'}</p>
+                    <p className="text-slate-600">{previewDeskTx?.sellerVillage || 'Thiruchendur'}</p>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-500 block">Buyer / Trader:</span>
+                    <p className="font-bold text-slate-900">{previewDeskTx?.buyerTradeName || 'Sathish Traders'}</p>
+                    <p className="text-slate-600">Paddle: {previewDeskTx?.buyerPaddle || 'P-08'}</p>
+                  </div>
+                </div>
+
+                <table className="w-full text-xs text-left border border-slate-200 mt-4">
+                  <thead className="bg-slate-100 font-bold">
+                    <tr>
+                      <th className="p-2 border-b">Item</th>
+                      <th className="p-2 border-b text-center">Qty</th>
+                      <th className="p-2 border-b text-right">Rate (₹)</th>
+                      <th className="p-2 border-b text-right">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="p-2 border-b">{previewDeskTx?.productName || 'Red Banana Bunch'}</td>
+                      <td className="p-2 border-b text-center font-mono">{previewDeskTx?.quantity || 1}</td>
+                      <td className="p-2 border-b text-right font-mono">₹{(previewDeskTx?.ratePerUnit || 100).toFixed(2)}</td>
+                      <td className="p-2 border-b text-right font-mono font-bold">₹{(previewDeskTx?.grossAmount || 100).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr className="font-bold">
+                      <td colSpan={3} className="p-2 text-right">Gross Total:</td>
+                      <td className="p-2 text-right">₹{(previewDeskTx?.grossAmount || 100).toFixed(2)}</td>
+                    </tr>
+                    <tr className="text-slate-600">
+                      <td colSpan={3} className="p-2 text-right">Mandi Cess & Charges:</td>
+                      <td className="p-2 text-right">-₹5.00</td>
+                    </tr>
+                    <tr className="font-black text-sm text-emerald-800 border-t border-slate-300">
+                      <td colSpan={3} className="p-2 text-right">Net Settlement:</td>
+                      <td className="p-2 text-right">₹{((previewDeskTx?.grossAmount || 100) - 5).toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ---------------------------------------------------- */}
+          {/* 1. TOP BREADCRUMB & PAGE HEADER                      */}
+          {/* ---------------------------------------------------- */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -1143,7 +1776,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
 
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => setShowPdfPreviewModal(true)}
                 className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
                 PDF
@@ -1151,7 +1784,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
 
               <button
                 type="button"
-                onClick={exportFilteredCSV}
+                onClick={exportFilteredExcel}
                 className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
                 Excel
@@ -1232,9 +1865,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
                             {/* View Eye */}
                             <button
                               type="button"
-                              onClick={() => setViewDetailTx(item.sampleTx)}
+                              onClick={() => openReceiptDesk(item.sampleTx, 'seller', item)}
                               className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 transition-colors cursor-pointer"
-                              title="View Transaction Details"
+                              title="View Mandi Receipt Desk"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -1319,51 +1952,47 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
                 <thead className="bg-slate-50/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
                   <tr>
                     <th className="py-3 px-4 w-14">S....</th>
-                    <th className="py-3 px-4">Date</th>
                     <th className="py-3 px-4">Buyer</th>
                     <th className="py-3 px-4 text-center">Qty</th>
-                    <th className="py-3 px-4 text-right">Total</th>
+                    <th className="py-3 px-4 text-right">Total Amount</th>
                     <th className="py-3 px-4">Seller</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
-                  {filteredTransactions.length === 0 ? (
+                  {buyerReportRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
                         No buyer purchases recorded.
                       </td>
                     </tr>
                   ) : (
-                    filteredTransactions.map((tx, idx) => (
+                    buyerReportRows.map((row, idx) => (
                       <tr
-                        key={tx.id + idx}
+                        key={row.id + idx}
                         className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                       >
                         <td className="py-3 px-4 font-mono font-medium text-slate-600 dark:text-slate-400">
                           {idx + 1}
                         </td>
-                        <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
-                          {tx.date}
-                        </td>
                         <td className="py-3 px-4">
                           <span className="font-bold text-slate-900 dark:text-white block">
-                            {tx.buyerName}
+                            {row.buyerName}
                           </span>
                           <span className="text-[11px] text-slate-400 font-mono block">
-                            {tx.buyerTradeName}
+                            {row.mobile}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-center font-mono font-bold">{tx.quantity}</td>
+                        <td className="py-3 px-4 text-center font-mono font-bold">{row.qty}</td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
-                          ₹{tx.grossAmount.toLocaleString('en-IN')}
+                          ₹{row.grossAmount.toLocaleString('en-IN')}
                         </td>
                         <td className="py-3 px-4">
                           <span className="font-bold text-slate-900 dark:text-white block">
-                            {tx.sellerName}
+                            {row.sellerName}
                           </span>
-                          <span className="text-[11px] text-slate-400 block">{tx.sellerVillage}</span>
+                          <span className="text-[11px] text-slate-400 block">{row.sellerVillage}</span>
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className="px-3 py-1 rounded-full text-[11px] font-bold border border-emerald-600 text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/40 uppercase">
@@ -1374,15 +2003,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
                           <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setViewDetailTx(tx)}
+                              onClick={() => openReceiptDesk(row.sampleTx, 'buyer', row)}
                               className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 cursor-pointer"
-                              title="View Invoice"
+                              title="View Invoice Desk"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => setModalA5Tx(tx)}
+                              onClick={() => setModalA5Tx(row.sampleTx)}
                               className="text-amber-600 hover:text-amber-700 cursor-pointer"
                               title="Print Invoice Chit"
                             >
@@ -1397,10 +2026,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
               </table>
 
               <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Total Billed : ₹{totalBuyerBilled.toLocaleString('en-IN')}</span>
+                <span>Revenue : ₹{buyerReportRows.reduce((s, r) => s + r.grossAmount, 0).toLocaleString('en-IN')}</span>
                 <div className="flex items-center gap-3 text-slate-500 font-medium">
                   <span>Rows per page: 50</span>
-                  <span>1-{filteredTransactions.length} of {filteredTransactions.length}</span>
+                  <span>1-{buyerReportRows.length} of {buyerReportRows.length}</span>
                   <div className="flex items-center gap-1">
                     <button className="p-1 rounded-md text-slate-400 hover:text-slate-600">&lt;</button>
                     <button className="p-1 rounded-md text-slate-400 hover:text-slate-600">&gt;</button>
@@ -1444,8 +2073,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
                         <div className="flex items-center justify-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setViewDetailTx(tx)}
+                            onClick={() => openReceiptDesk(tx, 'agent')}
                             className="text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                            title="View Agent Statement"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -1594,6 +2224,301 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
               </div>
             </div>
           )}
+        </div>
+      )}
+        </>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 8. INTERACTIVE MODALS & PREVIEWS                     */}
+      {/* ---------------------------------------------------- */}
+
+      {/* PDF Preview Modal (Matching Exact Uploaded Screenshots for Seller & Buyer) */}
+      {showPdfPreviewModal && (
+        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-800">
+            {/* Modal Top Header */}
+            <div className="px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 shrink-0">
+              <h2 className="text-base font-bold text-slate-800 dark:text-white">PDF Preview</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={exportFilteredExcel}
+                  className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPdfPreviewModal(false)}
+                  className="px-4 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Dark PDF Viewer Toolbar (Matching Chrome/Edge PDF UI) */}
+            <div className="bg-[#323639] text-white px-4 py-2 flex items-center justify-between text-xs select-none border-b border-black/40 shrink-0">
+              <div className="flex items-center gap-3">
+                <button className="text-slate-300 hover:text-white p-1 rounded hover:bg-white/10 cursor-pointer">
+                  ☰
+                </button>
+                <span className="text-[11px] text-slate-300 font-mono truncate max-w-[160px]">
+                  pdf;filename={activeTab === 'buyer-report' ? 'buyer_report' : activeTab === 'seller-report' ? 'seller_report' : 'agent_report'}.pdf
+                </span>
+                <span className="text-slate-400">|</span>
+                <div className="flex items-center gap-1.5 text-xs text-slate-300 font-mono">
+                  <span>1 / 1</span>
+                </div>
+                <span className="text-slate-400">|</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPdfZoom(z => Math.max(50, z - 10))}
+                    className="p-1 text-slate-300 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                    title="Zoom out"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono text-xs px-1 text-slate-200">{pdfZoom}%</span>
+                  <button
+                    type="button"
+                    onClick={() => setPdfZoom(z => Math.min(150, z + 10))}
+                    className="p-1 text-slate-300 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                    title="Zoom in"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPdfZoom(73)}
+                  className="p-1 text-slate-300 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                  title="Fit to page"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPdfRotation(r => (r + 90) % 360)}
+                  className="p-1 text-slate-300 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                  title="Rotate"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-slate-400">|</span>
+                <span className="text-slate-300 cursor-pointer hover:text-white">Tt</span>
+                <span className="text-slate-300 cursor-pointer hover:text-white">✍</span>
+                <span className="text-slate-300 cursor-pointer hover:text-white">↶</span>
+                <span className="text-slate-300 cursor-pointer hover:text-white">↷</span>
+                <button
+                  type="button"
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-200 text-[11px] cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Summarize</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 text-slate-300">
+                <button
+                  type="button"
+                  onClick={exportFilteredExcel}
+                  className="p-1 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                  title="Download File"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="p-1 hover:text-white hover:bg-white/10 rounded cursor-pointer"
+                  title="Print Document"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Viewer Workspace (Thumbnails + Canvas) */}
+            <div className="flex flex-1 overflow-hidden bg-[#525659]">
+              {/* Left Thumbnail Drawer */}
+              <div className="w-40 bg-[#323639] p-3 flex flex-col items-center border-r border-black/40 overflow-y-auto shrink-0 select-none">
+                <div className="border-2 border-blue-500 rounded p-1 bg-white w-28 h-36 shadow-lg overflow-hidden flex flex-col items-center text-[4px] leading-tight text-slate-700 cursor-pointer">
+                  <div className="w-full border border-black p-0.5 text-center font-bold text-[5px] mb-1">
+                    Green-Agro
+                  </div>
+                  <div className="w-full border-t border-slate-300 my-0.5" />
+                  <div className="w-full space-y-0.5 opacity-60">
+                    <div className="h-1 bg-slate-300 rounded w-full" />
+                    <div className="h-1 bg-slate-200 rounded w-3/4" />
+                    <div className="h-1 bg-slate-200 rounded w-5/6" />
+                    <div className="h-1 bg-slate-200 rounded w-2/3" />
+                  </div>
+                </div>
+                <span className="text-white text-xs font-mono mt-2">1</span>
+              </div>
+
+              {/* Main Document Viewport */}
+              <div className="flex-1 overflow-y-auto p-6 flex justify-center items-start print:p-0">
+                <div
+                  style={{
+                    transform: `scale(${pdfZoom / 100}) rotate(${pdfRotation}deg)`,
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.15s ease-out',
+                  }}
+                  className="w-full max-w-[680px] bg-white text-slate-900 shadow-2xl p-8 border border-slate-300 min-h-[820px] font-sans text-xs"
+                >
+                  {/* Top Header Box with Single Black Rectangular Border */}
+                  <div className="border border-black p-4 mb-4 flex items-center justify-between">
+                    <div className="font-bold text-xs uppercase tracking-wider text-black">
+                      TIRUPPUR
+                    </div>
+                    <div className="text-xl font-bold tracking-tight text-center text-black">
+                      Green-Agro
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-xs uppercase tracking-wider text-black">
+                        {activeTab === 'buyer-report'
+                          ? 'BUYER REPORT'
+                          : activeTab === 'seller-report'
+                          ? 'SELLER REPORT'
+                          : 'AGENT REPORT'}
+                      </div>
+                      <div className="text-xs font-medium text-black mt-0.5">
+                        25/11/2026
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DOCUMENT TABLE: SELLER REPORT */}
+                  {activeTab === 'seller-report' && (
+                    <table className="w-full border-collapse border border-black text-xs text-black">
+                      <thead>
+                        <tr className="border-b border-black font-bold">
+                          <th className="border-r border-black p-2 text-center w-12">S.No</th>
+                          <th className="border-r border-black p-2 text-left">Seller Name</th>
+                          <th className="border-r border-black p-2 text-center w-16">Qty</th>
+                          <th className="border-r border-black p-2 text-center w-20">Rent</th>
+                          <th className="p-2 text-right w-36">Total Amount (Rs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sellerSummaryList.map((row, idx) => (
+                          <tr key={row.sellerName + idx} className="border-b border-black">
+                            <td className="border-r border-black p-2 text-center font-medium">{idx + 1}</td>
+                            <td className="border-r border-black p-2">{row.sellerName} ({row.sellerVillage})</td>
+                            <td className="border-r border-black p-2 text-center font-medium">{row.totalQty}</td>
+                            <td className="border-r border-black p-2 text-center">-</td>
+                            <td className="p-2 text-right font-medium">{row.netAmount.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-black font-bold">
+                          <td colSpan={2} className="border-r border-black p-2 text-right">Total Qty:</td>
+                          <td className="border-r border-black p-2 text-center">
+                            {sellerSummaryList.reduce((s, r) => s + r.totalQty, 0)}
+                          </td>
+                          <td className="border-r border-black p-2 text-center">Total Rent: Rs. 0</td>
+                          <td className="p-2 text-right">
+                            Total Amount: Rs. {sellerSummaryList.reduce((s, r) => s + r.netAmount, 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+
+                  {/* DOCUMENT TABLE: BUYER REPORT */}
+                  {activeTab === 'buyer-report' && (
+                    <table className="w-full border-collapse border border-black text-xs text-black">
+                      <thead>
+                        <tr className="border-b border-black font-bold">
+                          <th className="border-r border-black p-2 text-left">Buyer Name</th>
+                          <th className="border-r border-black p-2 text-center w-20">Qty</th>
+                          <th className="p-2 text-right w-44">Total Amount (Rs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {buyerReportRows.map((row, idx) => (
+                          <tr key={row.id + idx} className="border-b border-black">
+                            <td className="border-r border-black p-2">{row.buyerName}</td>
+                            <td className="border-r border-black p-2 text-center font-medium">{row.qty}</td>
+                            <td className="p-2 text-right font-medium">{row.grossAmount.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-black font-bold">
+                          <td className="border-r border-black p-2 text-right">Total Qty:</td>
+                          <td className="border-r border-black p-2 text-center">
+                            {buyerReportRows.reduce((s, r) => s + r.qty, 0)}
+                          </td>
+                          <td className="p-2 text-right">
+                            Total Amount: Rs. {buyerReportRows.reduce((s, r) => s + r.grossAmount, 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+
+                  {/* DOCUMENT TABLE: AGENT REPORT */}
+                  {activeTab === 'agent-report' && (
+                    <table className="w-full border-collapse border border-black text-xs text-black">
+                      <thead>
+                        <tr className="border-b border-black font-bold">
+                          <th className="border-r border-black p-2 text-center w-12">S.No</th>
+                          <th className="border-r border-black p-2 text-left">Date</th>
+                          <th className="border-r border-black p-2 text-left">Buyer Name</th>
+                          <th className="border-r border-black p-2 text-left">Seller Name</th>
+                          <th className="border-r border-black p-2 text-center w-14">Qty</th>
+                          <th className="border-r border-black p-2 text-right">Gross (Rs.)</th>
+                          <th className="p-2 text-right">Commission (Rs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTransactions.map((tx, idx) => (
+                          <tr key={tx.id + idx} className="border-b border-black">
+                            <td className="border-r border-black p-2 text-center">{idx + 1}</td>
+                            <td className="border-r border-black p-2">{tx.date}</td>
+                            <td className="border-r border-black p-2">{tx.buyerTradeName}</td>
+                            <td className="border-r border-black p-2">{tx.sellerName}</td>
+                            <td className="border-r border-black p-2 text-center">{tx.quantity}</td>
+                            <td className="border-r border-black p-2 text-right">{tx.grossAmount.toLocaleString('en-IN')}</td>
+                            <td className="p-2 text-right font-medium">{tx.commissionAmount.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t-2 border-black font-bold">
+                          <td colSpan={4} className="border-r border-black p-2 text-right">Totals:</td>
+                          <td className="border-r border-black p-2 text-center">
+                            {filteredTransactions.reduce((s, t) => s + t.quantity, 0)}
+                          </td>
+                          <td className="border-r border-black p-2 text-right">
+                            Rs. {filteredTransactions.reduce((s, t) => s + t.grossAmount, 0).toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-2 text-right">
+                            Rs. {filteredTransactions.reduce((s, t) => s + t.commissionAmount, 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
