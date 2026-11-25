@@ -11,13 +11,10 @@ import {
   Coins,
   AlertTriangle,
   Printer,
-  CheckCircle2,
   Keyboard,
   X,
-  UserCheck,
   Filter,
   Users,
-  RotateCcw,
 } from 'lucide-react';
 import { KvsA5Receipt } from '../components/receipts/KvsA5Receipt';
 import { PosThermalReceipt } from '../components/receipts/PosThermalReceipt';
@@ -196,29 +193,12 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
 
   const selectedBuyer = buyers.find(b => b.id === selectedBuyerId) || filteredBuyers[0] || buyers[0];
 
-  const [biddingCalls, setBiddingCalls] = useState<string[]>([
-    'Floor desk ready. Open cry bidding initiated.'
-  ]);
-
   const handleIncrement = (inc: number) => {
-    const newRate = (winningRate || 0) + inc;
-    setWinningRate(newRate);
-    if (selectedBuyer && selectedLot) {
-      setBiddingCalls(prev => [
-        `₹${newRate} called by [${selectedBuyer.paddleNumber}] ${selectedBuyer.tradeName}`,
-        ...prev.slice(0, 4)
-      ]);
-    }
+    setWinningRate(prev => (prev || 0) + inc);
   };
 
-  const handlePreset = (rate: number, label: string) => {
+  const handlePreset = (rate: number) => {
     setWinningRate(rate);
-    if (selectedBuyer) {
-      setBiddingCalls(prev => [
-        `Preset ₹${rate} (${label}) set for [${selectedBuyer.paddleNumber}]`,
-        ...prev.slice(0, 4)
-      ]);
-    }
   };
 
   // Live calculations
@@ -391,11 +371,11 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
       {/* 3-Column Live Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column: Arrived Lots Queue (3 Cols) */}
-        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-2.5 flex flex-col h-[620px] lg:h-[740px] ${
+        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-2 flex flex-col h-[580px] lg:h-[620px] max-h-[calc(100vh-170px)] ${
           mobileTab === 'queue' ? 'flex' : 'hidden lg:flex'
         }`}>
           {/* Header & Filter Summary */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                 Pending Lots Queue
@@ -439,13 +419,13 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
             )}
           </div>
 
-          {/* 2. Filter Dropdowns: Farmer & Crop Type */}
-          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+          {/* 2. Filter Dropdowns: Farmer, Crop, Shed */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
             {/* Farmer Filter Dropdown */}
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1">
                 <Users className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Farmer:</span>
+                <span>Farmer</span>
               </label>
               <select
                 value={farmerFilter}
@@ -456,7 +436,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
                 }`}
               >
-                <option value="all">All Farmers ({uniqueFarmers.length})</option>
+                <option value="all">All ({uniqueFarmers.length})</option>
                 {uniqueFarmers.map(f => (
                   <option key={f.id} value={f.id}>
                     {f.name} ({f.count})
@@ -469,7 +449,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1">
                 <Filter className="w-2.5 h-2.5 text-amber-500" />
-                <span>Crop:</span>
+                <span>Crop</span>
               </label>
               <select
                 value={commodityFilter}
@@ -480,46 +460,37 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
                 }`}
               >
-                <option value="all">All Produce</option>
+                <option value="all">All</option>
                 <option value="Bunch">Bananas (தார்)</option>
                 <option value="Leaf">Leaves (கட்டு)</option>
-                <option value="CrateBag">Veg / Fruits (கூடை/மூட்டை)</option>
+                <option value="CrateBag">Veg / Fruit</option>
+              </select>
+            </div>
+
+            {/* Shed Filter */}
+            <div className="space-y-0.5 col-span-2 sm:col-span-1">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-1">
+                <Building2 className="w-2.5 h-2.5 text-blue-500" />
+                <span>Shed</span>
+              </label>
+              <select
+                value={shedFilter}
+                onChange={e => setShedFilter(e.target.value)}
+                className={`w-full p-1.5 rounded-md border text-xs font-semibold focus:outline-hidden focus:border-emerald-500 truncate cursor-pointer ${
+                  shedFilter !== 'all'
+                    ? 'bg-blue-50 dark:bg-blue-950/80 border-blue-400 text-blue-950 dark:text-blue-200 font-bold'
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                }`}
+              >
+                <option value="all">All Sheds</option>
+                {uniqueSheds.map(shed => (
+                  <option key={shed} value={shed}>
+                    {shed}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
-
-          {/* Quick Shed Filter Chips */}
-          {uniqueSheds.length > 1 && (
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 text-[10px] no-scrollbar">
-              <span className="text-slate-400 font-semibold shrink-0">Shed:</span>
-              <button
-                type="button"
-                onClick={() => setShedFilter('all')}
-                className={`px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap cursor-pointer ${
-                  shedFilter === 'all'
-                    ? 'bg-emerald-700 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                All
-              </button>
-              {uniqueSheds.map(shed => (
-                <button
-                  key={shed}
-                  type="button"
-                  onClick={() => setShedFilter(shed)}
-                  className={`px-1.5 py-0.5 rounded-md font-bold whitespace-nowrap cursor-pointer truncate max-w-[100px] ${
-                    shedFilter === shed
-                      ? 'bg-emerald-700 text-white'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                  }`}
-                  title={shed}
-                >
-                  {shed.split(' - ')[0]}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Active Filter Pill Badge */}
           {hasActiveFilters && (
@@ -629,38 +600,51 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
         </div>
 
         {/* Center Column: Active Calling Card Desk (6 Cols) */}
-        <div className={`lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-5 shadow-md flex flex-col justify-between space-y-4 ${
+        <div className={`lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-md flex flex-col justify-between space-y-3 ${
           mobileTab === 'desk' ? 'flex' : 'hidden lg:flex'
         }`}>
           {selectedLot ? (
-            <div className="space-y-4">
-              {/* Lot Card Spotlight Header */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-900 to-green-800 text-white shadow-sm space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold bg-white/20 px-2 py-0.5 rounded-sm">
-                    Lot #{selectedLot.lotNumber}
-                  </span>
-                  <span className="text-xs font-bold text-emerald-200 font-mono">
-                    Shed: {selectedLot.shedLocation}
-                  </span>
+            <div className="space-y-3">
+              {/* Lot Card Spotlight Header - High Efficiency Compact Cockpit Card */}
+              <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white border border-emerald-800/40 shadow-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                    <span className="font-mono text-xs font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-md shrink-0">
+                      Lot #{selectedLot.lotNumber}
+                    </span>
+                    <span className="text-sm sm:text-base font-black tracking-tight text-white truncate">
+                      {selectedLot.productName}
+                    </span>
+                    <span className="text-xs font-tamil text-emerald-300 truncate hidden sm:inline">
+                      ({selectedLot.productNameTamil} • {selectedLot.variety})
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-bold text-emerald-300 font-mono bg-emerald-950/80 px-2.5 py-0.5 rounded-md border border-emerald-700/50">
+                      Available: <strong className="text-white">{selectedLot.availableQuantity}</strong> {selectedLot.unit}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-black">{selectedLot.productName}</h3>
-                  <p className="text-xs font-tamil text-emerald-200">
-                    {selectedLot.productNameTamil} • {selectedLot.variety}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs pt-1 border-t border-white/20 text-emerald-100">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span>Farmer: <strong className="text-white text-sm">{selectedLot.sellerName}</strong> ({selectedLot.sellerVillage})</span>
+                <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-emerald-800/50 text-xs text-slate-300">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-slate-400">Farmer:</span>
+                    <strong className="text-white font-bold truncate">{selectedLot.sellerName}</strong>
+                    <span className="text-emerald-300/80 text-[11px] truncate">({selectedLot.sellerVillage})</span>
                     {selectedLot.sellerMobile && (
-                      <span className="font-mono text-[10px] text-emerald-200">Ph: {selectedLot.sellerMobile}</span>
+                      <span className="font-mono text-[10px] text-slate-400 hidden md:inline">Ph: {selectedLot.sellerMobile}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedLot.shedLocation && (
+                      <span className="text-[11px] text-slate-400 font-mono hidden md:inline">
+                        {selectedLot.shedLocation}
+                      </span>
                     )}
                     {farmerFilter !== selectedLot.sellerId ? (
                       <button
                         type="button"
                         onClick={() => setFarmerFilter(selectedLot.sellerId)}
-                        className="px-2 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-[10px] font-bold text-white transition-colors cursor-pointer flex items-center gap-1"
+                        className="px-2 py-0.5 rounded-md bg-emerald-800/60 hover:bg-emerald-700 text-[10px] font-bold text-emerald-200 transition-colors cursor-pointer flex items-center gap-1 border border-emerald-700/50"
                         title="Filter pending lots by this farmer"
                       >
                         <Filter className="w-2.5 h-2.5 text-amber-300" />
@@ -674,22 +658,26 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                         title="Remove farmer filter"
                       >
                         <X className="w-2.5 h-2.5" />
-                        <span>Filtered (Reset)</span>
+                        <span>Filtered</span>
                       </button>
                     )}
                   </div>
-                  <span className="font-bold">Available: {selectedLot.availableQuantity} {selectedLot.unit}</span>
                 </div>
               </div>
 
-              {/* Input Form */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Input Form: Weighed Quantity & Rate Side-by-Side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {/* 1. Weighed Quantity Input */}
-                <div className="p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-1">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <Scale className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                    <span>{t('weighedQuantity')} ({selectedLot.unit})</span>
-                  </label>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <Scale className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                      <span>{t('weighedQuantity')} ({selectedLot.unit})</span>
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      Max: {selectedLot.availableQuantity}
+                    </span>
+                  </div>
                   <input
                     type="number"
                     min={1}
@@ -698,15 +686,29 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     onChange={e => setWeighedQty(Number(e.target.value))}
                     className="w-full text-2xl font-black font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-hidden focus:border-amber-500"
                   />
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Live Scale Weight Verified</span>
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
+                    <span>Live Scale Weight Verified</span>
+                    <button
+                      type="button"
+                      onClick={() => setWeighedQty(selectedLot.availableQuantity)}
+                      className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      Use Full Lot
+                    </button>
+                  </div>
                 </div>
 
                 {/* 2. Winning Bid Rate Input */}
-                <div className="p-3.5 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-1">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                    <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>{t('winningRate')} (₹ / {selectedLot.unit})</span>
-                  </label>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <Coins className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>{t('winningRate')} (₹ / {selectedLot.unit})</span>
+                    </label>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono font-bold">
+                      Floor Calling
+                    </span>
+                  </div>
                   <input
                     type="number"
                     min={1}
@@ -715,66 +717,47 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     className="w-full text-2xl font-black font-mono text-emerald-800 dark:text-emerald-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-hidden focus:border-amber-500"
                   />
                   
-                  {/* Rapid Bid Increments */}
-                  <div className="pt-2 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      <span>Live Call Increments:</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-mono">Floor Calling</span>
-                    </div>
+                  {/* Rapid Increments & Presets */}
+                  <div className="space-y-1 pt-0.5">
                     <div className="grid grid-cols-6 gap-1">
                       {[1, 2, 5, 10, 20, 50].map(inc => (
                         <button
                           key={inc}
                           type="button"
                           onClick={() => handleIncrement(inc)}
-                          className="py-1 px-1 rounded-md bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-black font-mono border border-amber-300 dark:border-amber-800 transition-all active:scale-95 cursor-pointer text-center"
+                          className="py-0.5 px-0.5 rounded-md bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-black font-mono border border-amber-300 dark:border-amber-800 transition-all active:scale-95 cursor-pointer text-center"
                         >
                           +₹{inc}
                         </button>
                       ))}
                     </div>
-
-                    {/* Commodity Presets */}
-                    <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px]">
-                      <span className="text-slate-400 font-semibold">Presets:</span>
-                      <button
-                        type="button"
-                        onClick={() => handlePreset(350, selectedLot?.variety || 'Base')}
-                        className="px-2 py-0.5 rounded-xs bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-pointer"
-                      >
-                        ₹350 (Poovan/Bunch)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePreset(650, 'Tomato/Crate')}
-                        className="px-2 py-0.5 rounded-xs bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-pointer"
-                      >
-                        ₹650 (Tomato/Crate)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePreset(850, 'Mango/Box')}
-                        className="px-2 py-0.5 rounded-xs bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-pointer"
-                      >
-                        ₹850 (Mango/Box)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePreset(1250, 'Onion/Bag')}
-                        className="px-2 py-0.5 rounded-xs bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200 font-mono font-bold cursor-pointer"
-                      >
-                        ₹1250 (Onion/Bag)
-                      </button>
+                    <div className="flex items-center gap-1 overflow-x-auto text-[10px] no-scrollbar">
+                      <span className="text-slate-400 font-semibold shrink-0">Presets:</span>
+                      {[
+                        { rate: 350, label: '350 Poovan' },
+                        { rate: 650, label: '650 Tomato' },
+                        { rate: 850, label: '850 Mango' },
+                        { rate: 1250, label: '1250 Onion' },
+                      ].map(p => (
+                        <button
+                          key={p.rate}
+                          type="button"
+                          onClick={() => handlePreset(p.rate)}
+                          className="px-1.5 py-0.5 rounded-xs bg-slate-200 dark:bg-slate-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-slate-800 dark:text-slate-200 font-mono font-bold whitespace-nowrap cursor-pointer"
+                        >
+                          ₹{p.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* 3. Winning Buyer Selector (With Real-Time Search & Paddle Quick-Pick) */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-2.5">
+              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Building2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    <Building2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                       {t('selectBuyer')} / ஏல வியாபாரி
                     </label>
@@ -806,18 +789,17 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {/* Buyer Search Input */}
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
                       <input
                         type="text"
-                        placeholder="Search buyer by Paddle (e.g. 05 / P-01), Shop Name, Person, Mobile..."
+                        placeholder="Search paddle (e.g. 05 / P-01), shop name, mobile..."
                         value={buyerSearchQuery}
                         onChange={e => {
                           const val = e.target.value;
                           setBuyerSearchQuery(val);
-                          // Instant Auto-Select if matches paddle exactly (e.g., "5" or "05" or "P-05")
                           const clean = val.trim().toLowerCase().replace(/^p-?/i, '');
                           if (clean) {
                             const exact = buyers.find(b => b.paddleNumber.toLowerCase().replace(/^p-?/i, '') === clean);
@@ -826,22 +808,22 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                             }
                           }
                         }}
-                        className="w-full pl-8 pr-8 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                        className="w-full pl-8 pr-7 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-emerald-600"
                       />
                       {buyerSearchQuery && (
                         <button
                           type="button"
                           onClick={() => setBuyerSearchQuery('')}
-                          className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-0.5"
+                          className="absolute right-2 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-0.5"
                           title="Clear Search"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </div>
 
-                    {/* Quick Paddle Pick Buttons (Top Paddles) */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    {/* Quick Paddle Pick Buttons */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
                       <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Paddles:</span>
                       {filteredBuyers.slice(0, 8).map(b => {
                         const isPicked = selectedBuyer?.id === b.id;
@@ -866,7 +848,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                       })}
                       {filteredBuyers.length > 8 && (
                         <span className="text-[10px] text-slate-400 font-mono self-center">
-                          +{filteredBuyers.length - 8} more
+                          +{filteredBuyers.length - 8}
                         </span>
                       )}
                     </div>
@@ -876,7 +858,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                       <select
                         value={selectedBuyer?.id || ''}
                         onChange={e => setSelectedBuyerId(e.target.value)}
-                        className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 cursor-pointer"
+                        className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 cursor-pointer"
                       >
                         {filteredBuyers.map(b => (
                           <option key={b.id} value={b.id}>
@@ -885,7 +867,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                         ))}
                       </select>
                     ) : (
-                      <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
+                      <div className="p-2 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
                         <span>No buyer found matching "{buyerSearchQuery}"</span>
                         <button
                           type="button"
@@ -899,87 +881,74 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                   </div>
                 )}
 
+                {/* Clean buyer info row without overlapping */}
                 {selectedBuyer && (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] pt-1 text-slate-600 dark:text-slate-400 gap-1 border-t border-slate-200/80 dark:border-slate-700/80">
-                    <div className="flex items-center gap-2">
-                      <span>
-                        Paddle: <strong className="font-mono text-slate-900 dark:text-white">{selectedBuyer.paddleNumber}</strong>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="px-1.5 py-0.2 rounded-sm bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-mono font-black text-[10px]">
+                        {selectedBuyer.paddleNumber}
                       </span>
-                      <span className="text-slate-400">•</span>
-                      <span className="truncate max-w-[180px] font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
                         {selectedBuyer.tradeName}
                       </span>
                     </div>
-                    <div className="font-mono text-[10px] sm:text-[11px]">
-                      Deposit: ₹{selectedBuyer.depositAmount.toLocaleString()} | Outstanding: ₹{selectedBuyer.outstandingDues.toLocaleString()}
+                    <div className="font-mono text-[10px] sm:text-[11px] flex items-center gap-2 shrink-0">
+                      <span>Deposit: <strong className="text-emerald-700 dark:text-emerald-400">₹{selectedBuyer.depositAmount.toLocaleString()}</strong></span>
+                      <span>|</span>
+                      <span>Dues: <strong className={selectedBuyer.outstandingDues > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-700 dark:text-slate-300"}>₹{selectedBuyer.outstandingDues.toLocaleString()}</strong></span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Credit Limit Warning Alert */}
+              {/* Credit Limit Warning Alert (If applicable) */}
               {isCreditExceeded && selectedBuyer && (
-                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-900 dark:text-red-300 text-xs flex items-start gap-2 animate-bounce">
+                <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-900 dark:text-red-300 text-xs flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">High Risk: Credit Ceiling Exceeded!</span>
                     <p className="text-[11px] text-red-700 dark:text-red-400">
-                      This purchase pushes {selectedBuyer.tradeName}'s dues to ₹
-                      {newOutstanding.toLocaleString('en-IN')}, exceeding their deposit + limit of ₹
-                      {totalLimit.toLocaleString('en-IN')}. Mandi Admin clearance recommended.
+                      This purchase pushes {selectedBuyer.tradeName}'s dues to ₹{newOutstanding.toLocaleString('en-IN')}, exceeding limit of ₹{totalLimit.toLocaleString('en-IN')}.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Live Open Cry Audio Stream Log */}
-              <div className="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-xs font-mono">
-                <div className="flex items-center justify-between pb-1 border-b border-emerald-200/50 dark:border-emerald-800/40 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                    Open Floor Cry Stream
-                  </span>
-                  <span>Rate: ₹{winningRate}/{selectedLot.unit}</span>
-                </div>
-                <div className="pt-1.5 space-y-1 text-[11px]">
-                  {biddingCalls.slice(0, 3).map((call, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                      <span className="text-emerald-600 font-bold">›</span>
-                      <span className={idx === 0 ? 'font-bold text-emerald-900 dark:text-emerald-200' : 'text-slate-500 dark:text-slate-400 opacity-80'}>
-                        {call}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Real-Time Total Calculation Card */}
-              <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
-                    {t('calculatedTotal')}
-                  </span>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                    {weighedQty} {selectedLot.unit} × ₹{winningRate}
-                  </div>
-                </div>
-                <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                  ₹{grossTotal.toLocaleString('en-IN')}
-                </div>
-              </div>
-
-              {/* Complete Lot CTA Button */}
+              {/* Integrated High-Impact Cockpit CTA Button (Zero Scroll Single-Screen Design) */}
               <button
                 type="button"
                 onClick={handleCompleteLot}
-                className="w-full py-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                className="w-full p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-700 hover:from-emerald-800 hover:to-emerald-800 text-white font-black shadow-lg shadow-emerald-700/25 transition-all active:scale-[0.99] cursor-pointer flex items-center justify-between group"
               >
-                <Gavel className="w-5 h-5 text-amber-400" />
-                <span>{t('completeLotEnter')}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <Gavel className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-black tracking-wide flex items-center gap-2">
+                      <span>{t('completeLotEnter')}</span>
+                      <span className="hidden sm:inline-block px-1.5 py-0.5 rounded-sm bg-black/30 text-[10px] font-mono text-amber-300">
+                        ↵ Enter
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-100 font-medium truncate max-w-[220px]">
+                      {selectedBuyer ? `Buyer: [${selectedBuyer.paddleNumber}] ${selectedBuyer.tradeName}` : 'Select winning trader to complete'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right pl-3 border-l border-white/20 shrink-0">
+                  <div className="text-xl sm:text-2xl font-black font-mono text-amber-300 tracking-tight">
+                    ₹{grossTotal.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-emerald-100 font-mono">
+                    {weighedQty} {selectedLot.unit} × ₹{winningRate}
+                  </div>
+                </div>
               </button>
             </div>
           ) : (
-            <div className="text-center py-28 text-slate-400 text-xs space-y-2">
+            <div className="text-center py-24 text-slate-400 text-xs space-y-2">
               <span className="text-4xl block">⚖️</span>
               <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No Lot Selected</p>
               <p>Select an active inward lot from the left queue to begin floor bidding.</p>
@@ -988,13 +957,23 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
         </div>
 
         {/* Right Column: Live Sale Chits Feed (3 Cols) */}
-        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-3 flex flex-col h-[620px] lg:h-[680px] ${
+        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-2 flex flex-col h-[580px] lg:h-[620px] max-h-[calc(100vh-170px)] ${
           mobileTab === 'chits' ? 'flex' : 'hidden lg:flex'
         }`}>
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Today's Sale Chits ({transactions.length})
+          <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+              Today's Sale Chits
             </span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black">
+                {transactions.length} sales
+              </span>
+              {transactions.length > 0 && (
+                <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                  ₹{transactions.reduce((acc, t) => acc + t.grossAmount, 0).toLocaleString('en-IN')}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
