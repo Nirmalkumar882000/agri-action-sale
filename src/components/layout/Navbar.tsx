@@ -27,13 +27,16 @@ import {
   ShieldCheck,
   ExternalLink,
   Store,
+  Menu,
 } from 'lucide-react';
 
 interface NavbarProps {
   onNavigate?: (path: string) => void;
+  onToggleMobileMenu?: () => void;
+  isMobileMenuOpen?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onNavigate, onToggleMobileMenu, isMobileMenuOpen }) => {
   const {
     theme,
     toggleTheme,
@@ -137,47 +140,64 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-emerald-900/10 dark:border-slate-800 shadow-xs px-3 sm:px-4 lg:px-6 py-2 flex items-center justify-between transition-colors duration-200">
-      {/* Left: Branding & Mandi Details Interactive Dropdown */}
-      <div className="relative" ref={mandiDetailsRef}>
-        <button
-          onClick={() => {
-            setShowMandiDetails(!showMandiDetails);
-            setShowBranchDropdown(false);
-            setShowRoleDropdown(false);
-            setShowNotifications(false);
-          }}
-          className="flex items-center gap-2.5 sm:gap-3 p-1 sm:p-1.5 -ml-1 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800/80 transition-all text-left cursor-pointer group"
-          title="Click to view full Mandi profile, license & statutory details"
-        >
-          {/* Logo Badge */}
-          <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-green-700 flex items-center justify-center text-white font-bold text-lg sm:text-xl shadow-md shadow-emerald-700/25 shrink-0 group-hover:scale-105 transition-transform">
-            🍌
-          </div>
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-emerald-900/10 dark:border-slate-800 shadow-xs px-2.5 sm:px-4 lg:px-6 py-2 flex items-center justify-between transition-colors duration-200 gap-2">
+      {/* Left: Mobile Menu Toggle & Branding Dropdown */}
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+        {onToggleMobileMenu && (
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            className="lg:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            aria-label={isMobileMenuOpen ? 'Close Menu' : 'Open Menu'}
+            title="Toggle Mandi Navigation Drawer"
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+            )}
+          </button>
+        )}
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-sm sm:text-base lg:text-lg tracking-tight text-slate-900 dark:text-white leading-none">
-                {profile.shopName}
-              </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5"></span>
-                {t('connectedLive')}
-              </span>
-              <ChevronDown
-                className={`w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-transform duration-200 ${
-                  showMandiDetails ? 'rotate-180 text-emerald-600' : ''
-                }`}
-              />
+        <div className="relative min-w-0" ref={mandiDetailsRef}>
+          <button
+            onClick={() => {
+              setShowMandiDetails(!showMandiDetails);
+              setShowBranchDropdown(false);
+              setShowRoleDropdown(false);
+              setShowNotifications(false);
+            }}
+            className="flex items-center gap-2 sm:gap-3 p-1 rounded-xl hover:bg-emerald-50/80 dark:hover:bg-slate-800/80 transition-all text-left cursor-pointer group min-w-0"
+            title="Click to view full Mandi profile, license & statutory details"
+          >
+            {/* Logo Badge */}
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-green-700 flex items-center justify-center text-white font-bold text-base sm:text-xl shadow-md shadow-emerald-700/25 shrink-0 group-hover:scale-105 transition-transform">
+              🍌
             </div>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[200px] sm:max-w-xs md:max-w-md">
-              {language === 'ta' ? profile.shopNameTamil : profile.tagline} •{' '}
-              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
-                Lic: {profile.mandiLicenseNo}
-              </span>
-            </p>
-          </div>
-        </button>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="font-extrabold text-xs sm:text-base lg:text-lg tracking-tight text-slate-900 dark:text-white leading-none truncate max-w-[110px] sm:max-w-none">
+                  {profile.shopName}
+                </h1>
+                <span className="hidden xs:inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1"></span>
+                  {t('connectedLive')}
+                </span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-600 transition-transform duration-200 shrink-0 ${
+                    showMandiDetails ? 'rotate-180 text-emerald-600' : ''
+                  }`}
+                />
+              </div>
+              <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-[130px] sm:max-w-xs md:max-w-md">
+                {language === 'ta' ? profile.shopNameTamil : profile.tagline} •{' '}
+                <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                  Lic: {profile.mandiLicenseNo}
+                </span>
+              </p>
+            </div>
+          </button>
 
         {/* Mandi Full Details Dropdown Menu */}
         {showMandiDetails && (
@@ -317,6 +337,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           </div>
         )}
       </div>
+    </div>
 
       {/* Right Controls: Custom Shed Dropdown, Role Dropdown, Data Tools, Theme, Lang, Notifs */}
       <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-2.5">

@@ -54,6 +54,9 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
 
   const activeLots = lots.filter(l => l.availableQuantity > 0);
 
+  // Mobile/Tablet Tab Switcher for auction floor ergonomics
+  const [mobileTab, setMobileTab] = useState<'desk' | 'queue' | 'chits'>('desk');
+
   // Filter & Search states for Pending Lots Queue
   const [lotSearchQuery, setLotSearchQuery] = useState('');
   const [farmerFilter, setFarmerFilter] = useState('all');
@@ -319,10 +322,59 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
         </div>
       </div>
 
+      {/* Mobile/Tablet Segmented Desk Mode Tabs (< lg screens) */}
+      <div className="grid grid-cols-3 lg:hidden bg-white dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs gap-1">
+        <button
+          type="button"
+          onClick={() => setMobileTab('desk')}
+          className={`py-2 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'desk'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Gavel className="w-3.5 h-3.5" />
+          <span className="truncate">Calling Desk</span>
+          {selectedLot && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('queue')}
+          className={`py-2 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'queue'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Filter className="w-3.5 h-3.5" />
+          <span className="truncate">Lots Queue</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono">
+            {filteredLots.length}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('chits')}
+          className={`py-2 px-1 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === 'chits'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Printer className="w-3.5 h-3.5" />
+          <span className="truncate">Sale Chits</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-mono">
+            {transactions.length}
+          </span>
+        </button>
+      </div>
+
       {/* 3-Column Live Workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Column: Arrived Lots Queue (3 Cols) */}
-        <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-2.5 flex flex-col h-[740px]">
+        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-2.5 flex flex-col h-[620px] lg:h-[740px] ${
+          mobileTab === 'queue' ? 'flex' : 'hidden lg:flex'
+        }`}>
           {/* Header & Filter Summary */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-1.5">
@@ -509,7 +561,10 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                 return (
                   <div
                     key={lot.id}
-                    onClick={() => setSelectedLot(lot)}
+                    onClick={() => {
+                      setSelectedLot(lot);
+                      setMobileTab('desk');
+                    }}
                     className={`p-3 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-md scale-[1.02]'
@@ -555,7 +610,9 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
         </div>
 
         {/* Center Column: Active Calling Card Desk (6 Cols) */}
-        <div className="lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-md flex flex-col justify-between space-y-4">
+        <div className={`lg:col-span-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-5 shadow-md flex flex-col justify-between space-y-4 ${
+          mobileTab === 'desk' ? 'flex' : 'hidden lg:flex'
+        }`}>
           {selectedLot ? (
             <div className="space-y-4">
               {/* Lot Card Spotlight Header */}
@@ -820,7 +877,9 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
         </div>
 
         {/* Right Column: Live Sale Chits Feed (3 Cols) */}
-        <div className="lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-3 flex flex-col h-[680px]">
+        <div className={`lg:col-span-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-3 shadow-xs space-y-3 flex flex-col h-[620px] lg:h-[680px] ${
+          mobileTab === 'chits' ? 'flex' : 'hidden lg:flex'
+        }`}>
           <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Today's Sale Chits ({transactions.length})
@@ -884,8 +943,8 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
 
       {/* Quick Add Buyer Modal */}
       {showQuickAddBuyer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5" />

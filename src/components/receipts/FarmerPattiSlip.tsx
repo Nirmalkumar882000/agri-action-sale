@@ -30,10 +30,10 @@ export const FarmerPattiSlip: React.FC<FarmerPattiSlipProps> = ({
   const netPayable = Math.max(0, grossTotal - totalDeductions);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Toolbar (hidden in print) */}
-        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
               Farmer Settlement Patti / விற்பனை ரசீது
@@ -42,14 +42,14 @@ export const FarmerPattiSlip: React.FC<FarmerPattiSlipProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Patti</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -57,7 +57,7 @@ export const FarmerPattiSlip: React.FC<FarmerPattiSlipProps> = ({
         </div>
 
         {/* The Printable Patti */}
-        <div className="p-8 bg-white font-mono text-slate-900 leading-tight print-chit-container space-y-4">
+        <div className="overflow-y-auto overflow-x-auto p-4 sm:p-8 bg-white font-mono text-slate-900 leading-tight print-chit-container space-y-4">
           {/* Header */}
           <div className="text-center pb-3 border-b-2 border-slate-800 space-y-1">
             <h2 className="font-extrabold text-xl tracking-wider uppercase text-slate-900">

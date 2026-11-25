@@ -22,6 +22,7 @@ import { WorkforceSalaryPayrollView } from './views/WorkforceSalaryPayrollView';
 
 export const AppContent: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>('/dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const { hasPermission, theme, isLoading, loadingMessage } = useApp();
 
   const isAllowed = hasPermission(currentPath);
@@ -67,10 +68,27 @@ export const AppContent: React.FC = () => {
 
   return (
     <div className={`min-h-screen flex flex-col ${theme === 'dark' ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} transition-colors duration-200`}>
-      <Navbar onNavigate={setCurrentPath} />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar currentPath={currentPath} onNavigate={setCurrentPath} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+      <Navbar
+        onNavigate={setCurrentPath}
+        onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
+        isMobileMenuOpen={mobileMenuOpen}
+      />
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Sidebar Backdrop Overlay */}
+        {mobileMenuOpen && (
+          <div
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden transition-opacity duration-300"
+            aria-hidden="true"
+          />
+        )}
+        <Sidebar
+          currentPath={currentPath}
+          onNavigate={setCurrentPath}
+          isOpen={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+        />
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full min-w-0">
           {renderActiveView()}
         </main>
       </div>

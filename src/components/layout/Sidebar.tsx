@@ -18,15 +18,23 @@ import {
   ShieldCheck,
   Store,
   BookOpen,
+  X,
 } from 'lucide-react';
 
 interface SidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpen, onClose }) => {
   const { t, language, activeRole, activeBranch, hasPermission } = useApp();
+
+  const handleNav = (path: string) => {
+    if (onClose) onClose();
+    onNavigate(path);
+  };
 
   const navItems = [
     {
@@ -134,14 +142,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
   ];
 
   return (
-    <aside className="w-64 lg:w-72 flex flex-col shrink-0 select-none transition-colors duration-300 bg-gradient-to-b from-[#064e3b] via-[#022c22] to-[#022c22] dark:from-[#022c22] dark:via-slate-950 dark:to-slate-950 text-white border-r border-emerald-800/40 dark:border-slate-800/80 shadow-2xl z-30">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 lg:static w-72 lg:w-72 flex flex-col shrink-0 select-none transition-transform duration-300 ease-in-out bg-gradient-to-b from-[#064e3b] via-[#022c22] to-[#022c22] dark:from-[#022c22] dark:via-slate-950 dark:to-slate-950 text-white border-r border-emerald-800/40 dark:border-slate-800/80 shadow-2xl ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}
+    >
       {/* Current User Role Pill & Status Card (Click to open Profile) */}
-      <div
-        onClick={() => onNavigate('/profile')}
-        className="p-3.5 border-b border-white/10 dark:border-slate-800/80 bg-black/25 dark:bg-slate-900/50 backdrop-blur-xs hover:bg-white/10 dark:hover:bg-slate-900/80 transition-all cursor-pointer group"
-        title={language === 'ta' ? 'மண்டி சுயவிவரம் மற்றும் அமைப்புகளை திறக்க கிளிக் செய்யவும்' : 'Click to view Mandi profile & statutory settings'}
-      >
-        <div className="flex items-center justify-between">
+      <div className="p-3 sm:p-3.5 border-b border-white/10 dark:border-slate-800/80 bg-black/25 dark:bg-slate-900/50 backdrop-blur-xs flex items-center justify-between">
+        <div
+          onClick={() => handleNav('/profile')}
+          className="flex items-center justify-between flex-1 hover:opacity-90 transition-opacity cursor-pointer group pr-2"
+          title={language === 'ta' ? 'மண்டி சுயவிவரம் மற்றும் அமைப்புகளை திறக்க கிளிக் செய்யவும்' : 'Click to view Mandi profile & statutory settings'}
+        >
           <div className="flex items-center gap-2.5">
             <div className="relative">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-black text-xs uppercase shadow-md shadow-amber-950/40 ring-2 ring-emerald-400/30 group-hover:scale-105 transition-transform">
@@ -165,13 +177,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
               RBAC OK
             </span>
             <span
-              className="text-[8px] font-mono text-emerald-300/60 dark:text-slate-500 uppercase truncate max-w-[90px]"
+              className="text-[8px] font-mono text-emerald-300/60 dark:text-slate-500 uppercase truncate max-w-[80px]"
               title={activeBranch}
             >
               {activeBranch.split(' ')[0]}
             </span>
           </div>
         </div>
+
+        {/* Mobile Close Drawer Button */}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0 ml-1"
+            aria-label="Close navigation"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Nav List with Green Scrollbar */}
@@ -215,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
               return (
                 <div key={item.id} className="space-y-0.5">
                   <button
-                    onClick={() => onNavigate(item.path)}
+                    onClick={() => handleNav(item.path)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-200 text-left group cursor-pointer ${
                       isActive
                         ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600 dark:from-emerald-700 dark:via-emerald-600 dark:to-emerald-700 text-white font-black shadow-lg shadow-emerald-950/60 border-l-4 border-amber-400 pl-2.5'
@@ -249,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
                         return (
                           <button
                             key={sub.path}
-                            onClick={() => onNavigate(sub.path)}
+                            onClick={() => handleNav(sub.path)}
                             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] text-left transition-all cursor-pointer ${
                               isSubActive
                                 ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-950/40 scale-[1.02]'
@@ -328,7 +352,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
               return (
                 <button
                   key={item.id}
-                  onClick={() => onNavigate(item.path)}
+                  onClick={() => handleNav(item.path)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all duration-200 text-left group cursor-pointer ${
                     isActive
                       ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-green-600 dark:from-emerald-700 dark:via-emerald-600 dark:to-emerald-700 text-white font-black shadow-lg shadow-emerald-950/60 border-l-4 border-amber-400 pl-2.5'

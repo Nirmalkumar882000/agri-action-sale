@@ -1346,8 +1346,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
 
       {/* Quick Payout Modal inside Seller Report */}
       {showPayoutModal && selectedFarmer && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl max-w-md w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl animate-in fade-in zoom-in-95">
             <h3 className="font-black text-slate-900 dark:text-white text-base">
               {language === 'ta' ? 'விவசாயி பட்டி பட்டுவாடா உறுதி செய்' : 'Confirm Farmer Settlement Payout'}
             </h3>
@@ -1400,8 +1400,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onNavigate, initialTab
 
       {/* Quick Collect Modal inside Buyer Report */}
       {showCollectModal && selectedBuyer && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl max-w-md w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 shadow-2xl animate-in fade-in zoom-in-95">
             <h3 className="font-black text-slate-900 dark:text-white text-base">
               {language === 'ta' ? 'வியாபாரி வசூல் பதிவு செய்' : 'Record Trader Payment Collection'}
             </h3>

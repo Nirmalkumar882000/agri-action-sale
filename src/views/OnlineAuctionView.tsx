@@ -477,8 +477,8 @@ export const OnlineAuctionView: React.FC<OnlineAuctionViewProps> = ({ onNavigate
 
       {/* Create Digital Auction Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Radio className="w-5 h-5" />

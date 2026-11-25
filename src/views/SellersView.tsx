@@ -271,8 +271,8 @@ export const SellersView: React.FC<SellersViewProps> = ({ onNavigate }) => {
 
       {/* Add Farmer Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95vw] sm:max-w-xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5" />
@@ -446,8 +446,8 @@ export const SellersView: React.FC<SellersViewProps> = ({ onNavigate }) => {
 
       {/* Farmer Inward History Modal */}
       {selectedSellerHistory && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
               <div>
                 <h3 className="font-extrabold text-sm">{selectedSellerHistory.name} - Inward Lots & Sales</h3>
@@ -532,8 +532,8 @@ export const SellersView: React.FC<SellersViewProps> = ({ onNavigate }) => {
 
       {/* WhatsApp Message Preview Modal */}
       {whatsAppSeller && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-green-700 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5" />

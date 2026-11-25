@@ -28,10 +28,10 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
   onClose,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Floating Toolbar */}
-        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
               80mm Thermal POS Receipt
@@ -43,14 +43,14 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print POS</span>
             </button>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -58,7 +58,7 @@ export const PosThermalReceipt: React.FC<PosThermalReceiptProps> = ({
         </div>
 
         {/* 80mm Thermal Receipt Simulation */}
-        <div className="p-4 bg-white font-mono text-black text-xs leading-tight print-chit-container">
+        <div className="overflow-y-auto p-3 sm:p-4 bg-white font-mono text-black text-xs leading-tight print-chit-container">
           <div className="border border-dashed border-slate-300 p-3 space-y-2">
             {/* Header */}
             <div className="text-center pb-2 border-b-2 border-dashed border-black space-y-0.5">

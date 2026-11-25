@@ -659,8 +659,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
 
       {/* Add Commodity Modal */}
       {showAddProductModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <PackageCheck className="w-5 h-5" />
@@ -856,8 +856,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({ onNavigate }) => {
 
       {/* Inward Produce Entry Modal */}
       {showInwardLotModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Truck className="w-5 h-5" />

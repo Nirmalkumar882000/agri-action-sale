@@ -24,8 +24,8 @@ const getTamilUnit = (itemType?: string, unit?: string) => {
 
 export const KvsA5Receipt: React.FC<KvsA5ReceiptProps> = ({ transaction, profile, onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-[155mm] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-[155mm] max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Floating Toolbar (Hidden on print) */}
         <div className="no-print p-3 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export const KvsA5Receipt: React.FC<KvsA5ReceiptProps> = ({ transaction, profile
         </div>
 
         {/* The Exact KVS A5 Portrait Page (148mm x 210mm) */}
-        <div className="p-4 sm:p-6 bg-white font-mono text-black leading-tight print-chit-container">
+        <div className="overflow-y-auto overflow-x-auto p-2.5 sm:p-6 bg-white font-mono text-black leading-tight print-chit-container">
           <div className="border-[1.5px] border-black p-4 space-y-2">
             {/* Top Phone */}
             <div className="text-right text-[12px] font-bold">
