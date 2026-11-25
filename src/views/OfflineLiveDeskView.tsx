@@ -148,6 +148,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
   // Calling form inputs
   const [weighedQty, setWeighedQty] = useState<number>(selectedLot?.availableQuantity || 20);
   const [selectedBuyerId, setSelectedBuyerId] = useState<string>(buyers[0]?.id || '');
+  const [buyerSearchQuery, setBuyerSearchQuery] = useState<string>('');
   const [winningRate, setWinningRate] = useState<number>(680);
   const [showQuickAddBuyer, setShowQuickAddBuyer] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<AuctionTransaction | null>(null);
@@ -160,6 +161,24 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
     mobile: '',
     paddleNumber: 'P-' + Math.floor(20 + Math.random() * 80),
   });
+
+  // Filtered Buyers based on search query (Paddle, Shop Name, Contact, Mobile)
+  const filteredBuyers = React.useMemo(() => {
+    if (!buyerSearchQuery.trim()) return buyers;
+    const q = buyerSearchQuery.trim().toLowerCase();
+    const cleanQ = q.replace(/^p-?/i, '');
+    return buyers.filter(b => {
+      const matchPaddle =
+        b.paddleNumber.toLowerCase().includes(q) ||
+        b.paddleNumber.toLowerCase().replace(/^p-?/i, '').includes(cleanQ);
+      const matchTrade = b.tradeName.toLowerCase().includes(q);
+      const matchTradeTamil = (b.tradeNameTamil || '').toLowerCase().includes(q);
+      const matchName = b.name.toLowerCase().includes(q);
+      const matchMobile = b.mobile.includes(q);
+      const matchCity = (b.city || '').toLowerCase().includes(q);
+      return matchPaddle || matchTrade || matchTradeTamil || matchName || matchMobile || matchCity;
+    });
+  }, [buyers, buyerSearchQuery]);
 
   // Keep quantity synced when selected lot changes
   useEffect(() => {
@@ -175,7 +194,7 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
     }
   }, [buyers, selectedBuyerId]);
 
-  const selectedBuyer = buyers.find(b => b.id === selectedBuyerId) || buyers[0];
+  const selectedBuyer = buyers.find(b => b.id === selectedBuyerId) || filteredBuyers[0] || buyers[0];
 
   const [biddingCalls, setBiddingCalls] = useState<string[]>([
     'Floor desk ready. Open cry bidding initiated.'
@@ -751,13 +770,20 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                 </div>
               </div>
 
-              {/* 3. Winning Buyer Selector */}
-              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+              {/* 3. Winning Buyer Selector (With Real-Time Search & Paddle Quick-Pick) */}
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <div className="flex items-center gap-1.5">
                     <Building2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                    <span>{t('selectBuyer')}</span>
-                  </label>
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {t('selectBuyer')} / ஏல வியாபாரி
+                    </label>
+                    {filteredBuyers.length > 0 && buyerSearchQuery && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold font-mono">
+                        {filteredBuyers.length} found
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowQuickAddBuyer(true)}
@@ -780,28 +806,113 @@ export const OfflineLiveDeskView: React.FC<OfflineLiveDeskViewProps> = ({ onNavi
                     </button>
                   </div>
                 ) : (
-                  <select
-                    value={selectedBuyerId}
-                    onChange={e => setSelectedBuyerId(e.target.value)}
-                    className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 cursor-pointer"
-                  >
-                    {buyers.map(b => (
-                      <option key={b.id} value={b.id}>
-                        [{b.paddleNumber}] {b.tradeName} ({b.name} - {b.mobile})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    {/* Buyer Search Input */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search buyer by Paddle (e.g. 05 / P-01), Shop Name, Person, Mobile..."
+                        value={buyerSearchQuery}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setBuyerSearchQuery(val);
+                          // Instant Auto-Select if matches paddle exactly (e.g., "5" or "05" or "P-05")
+                          const clean = val.trim().toLowerCase().replace(/^p-?/i, '');
+                          if (clean) {
+                            const exact = buyers.find(b => b.paddleNumber.toLowerCase().replace(/^p-?/i, '') === clean);
+                            if (exact) {
+                              setSelectedBuyerId(exact.id);
+                            }
+                          }
+                        }}
+                        className="w-full pl-8 pr-8 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                      />
+                      {buyerSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setBuyerSearchQuery('')}
+                          className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer p-0.5"
+                          title="Clear Search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quick Paddle Pick Buttons (Top Paddles) */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Paddles:</span>
+                      {filteredBuyers.slice(0, 8).map(b => {
+                        const isPicked = selectedBuyer?.id === b.id;
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedBuyerId(b.id);
+                              setBuyerSearchQuery('');
+                            }}
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-black border transition-all shrink-0 cursor-pointer ${
+                              isPicked
+                                ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-xs scale-105'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-500'
+                            }`}
+                            title={`${b.tradeName} (${b.name})`}
+                          >
+                            {b.paddleNumber}
+                          </button>
+                        );
+                      })}
+                      {filteredBuyers.length > 8 && (
+                        <span className="text-[10px] text-slate-400 font-mono self-center">
+                          +{filteredBuyers.length - 8} more
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Standard Dropdown of filtered buyers */}
+                    {filteredBuyers.length > 0 ? (
+                      <select
+                        value={selectedBuyer?.id || ''}
+                        onChange={e => setSelectedBuyerId(e.target.value)}
+                        className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600 cursor-pointer"
+                      >
+                        {filteredBuyers.map(b => (
+                          <option key={b.id} value={b.id}>
+                            [{b.paddleNumber}] {b.tradeName} ({b.name} - {b.mobile})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
+                        <span>No buyer found matching "{buyerSearchQuery}"</span>
+                        <button
+                          type="button"
+                          onClick={() => setBuyerSearchQuery('')}
+                          className="font-bold underline text-[11px] cursor-pointer"
+                        >
+                          Reset Search
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {selectedBuyer && (
-                  <div className="flex items-center justify-between text-[11px] pt-1 text-slate-600 dark:text-slate-400">
-                    <span>
-                      Paddle: <strong className="font-mono text-slate-900 dark:text-white">{selectedBuyer.paddleNumber}</strong>
-                    </span>
-                    <span>
-                      Deposit: ₹{selectedBuyer.depositAmount.toLocaleString()} | Outstanding: ₹
-                      {selectedBuyer.outstandingDues.toLocaleString()}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] pt-1 text-slate-600 dark:text-slate-400 gap-1 border-t border-slate-200/80 dark:border-slate-700/80">
+                    <div className="flex items-center gap-2">
+                      <span>
+                        Paddle: <strong className="font-mono text-slate-900 dark:text-white">{selectedBuyer.paddleNumber}</strong>
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="truncate max-w-[180px] font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedBuyer.tradeName}
+                      </span>
+                    </div>
+                    <div className="font-mono text-[10px] sm:text-[11px]">
+                      Deposit: ₹{selectedBuyer.depositAmount.toLocaleString()} | Outstanding: ₹{selectedBuyer.outstandingDues.toLocaleString()}
+                    </div>
                   </div>
                 )}
               </div>
