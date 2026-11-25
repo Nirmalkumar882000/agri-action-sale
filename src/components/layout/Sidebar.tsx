@@ -29,6 +29,22 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+interface NavSubLink {
+  path: string;
+  labelEn: string;
+  labelTa: string;
+  highlight?: boolean;
+}
+
+interface NavItem {
+  id: string;
+  path: string;
+  labelEn: string;
+  labelTa: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subLinks?: NavSubLink[];
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpen, onClose }) => {
   const { language, activeRole, activeBranch, hasPermission } = useApp();
 
@@ -37,40 +53,46 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
     onNavigate(path);
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       id: 'dashboard',
       path: '/dashboard',
-      label: 'Mandi Dashboard',
+      labelEn: 'Mandi Dashboard',
+      labelTa: 'மண்டி முகப்பு பலகை',
       icon: LayoutDashboard,
     },
     {
       id: 'sellers',
       path: '/sellers',
-      label: 'Farmers (Sellers / விவசாயிகள்)',
+      labelEn: 'Farmers (Sellers)',
+      labelTa: 'விவசாயிகள்',
       icon: Users,
     },
     {
       id: 'buyers',
       path: '/buyers',
-      label: 'Buyers (Wholesale Traders / வியாபாரிகள்)',
+      labelEn: 'Buyers (Wholesale Traders)',
+      labelTa: 'மொத்த வியாபாரிகள்',
       icon: Building2,
     },
     {
       id: 'products',
       path: '/products',
-      label: 'Commodities & Products (விளைபொருட்கள்)',
+      labelEn: 'Commodities & Products',
+      labelTa: 'விளைபொருட்கள் & ரகங்கள்',
       icon: PackageCheck,
     },
     {
       id: 'offline',
       path: '/offline',
-      label: 'Mandi Floor Auction (Manual)',
+      labelEn: 'Mandi Floor Auction (Manual)',
+      labelTa: 'மண்டி நேரடி தரை ஏலம்',
       icon: Gavel,
       subLinks: [
         {
           path: '/offline/live',
-          label: 'Live Floor Calling Desk',
+          labelEn: 'Live Floor Calling Desk',
+          labelTa: 'நேரலை ஏல கூவல் மேடை',
           highlight: true,
         },
       ],
@@ -78,52 +100,60 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
     {
       id: 'online',
       path: '/online',
-      label: 'Digital Remote Auction',
+      labelEn: 'Digital Remote Auction',
+      labelTa: 'டிஜிட்டல் ஆன்லைன் ஏலம்',
       icon: Radio,
     },
     {
       id: 'ledger',
       path: '/ledger',
-      label: 'Financial Ledger & Cash Book',
+      labelEn: 'Financial Ledger & Cash Book',
+      labelTa: 'நிதி லெட்ஜர் & கணக்கு ஏடு',
       icon: BookOpen,
     },
     {
       id: 'reports',
       path: '/reports',
-      label: 'Reports & Billing (POS / A5 / Profile)',
+      labelEn: 'Reports & Billing (POS / A5)',
+      labelTa: 'அறிக்கைகள் & பில்லிங்',
       icon: FileSpreadsheet,
     },
     {
       id: 'profile',
       path: '/profile',
-      label: 'Mandi Profile & Settings',
+      labelEn: 'Mandi Profile & Settings',
+      labelTa: 'மண்டி சுயவிவரம் & அமைப்புகள்',
       icon: Store,
     },
   ];
 
-  const workforceItems = [
+  const workforceItems: NavItem[] = [
     {
       id: 'employee-details',
       path: '/workforce/employee-details',
-      label: 'Employee Details (RBAC)',
+      labelEn: 'Employee Details (RBAC)',
+      labelTa: 'பணியாளர் விவரம் (RBAC)',
       icon: UserCheck,
     },
     {
       id: 'attendance',
       path: '/workforce/attendance',
-      label: 'Daily Shift Attendance',
+      labelEn: 'Daily Shift Attendance',
+      labelTa: 'ஷிப்ட் வருகை பதிவு',
       icon: CalendarCheck,
     },
     {
       id: 'advances',
       path: '/workforce/advances',
-      label: 'Staff Cash Advances',
+      labelEn: 'Staff Cash Advances',
+      labelTa: 'ரொக்க அட்வான்ஸ்',
       icon: WalletCards,
     },
     {
       id: 'salary-payroll',
       path: '/workforce/salary-payroll',
-      label: 'Salary & Payroll Engine',
+      labelEn: 'Salary & Payroll Engine',
+      labelTa: 'சம்பளம் & பேரோல்',
       icon: ReceiptText,
     },
   ];
@@ -154,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
                 <span className="text-[10px] text-amber-400 font-bold">• Mandi</span>
               </div>
               <div className="text-[10px] text-emerald-300/80 font-medium group-hover:text-amber-200 transition-colors">
-                Profile & Settings
+                {language === 'ta' ? 'சுயவிவரம் & அமைப்புகள்' : 'Profile & Settings'}
               </div>
             </div>
           </div>
@@ -184,13 +214,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
       </div>
 
       {/* Nav List with Core Operations & Workforce */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-5 sidebar-green-scroll">
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 sidebar-green-scroll">
         {/* Section 1: Core Mandi Operations */}
         <div>
           <div className="px-2 mb-2 flex items-center text-[10px] font-black uppercase tracking-wider text-emerald-400">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-              <span>CORE MANDI OPERATIONS</span>
+              <span>{language === 'ta' ? 'மண்டி முதன்மை செயல்பாடுகள்' : 'CORE MANDI OPERATIONS'}</span>
             </span>
           </div>
 
@@ -201,18 +231,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
                 currentPath === item.path ||
                 (item.subLinks && item.subLinks.some(s => s.path === currentPath));
 
+              const primaryTitle = language === 'ta' ? item.labelTa : item.labelEn;
+              const secondarySubtitle = language === 'ta' ? item.labelEn : item.labelTa;
+
               if (!allowed) {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-xl text-emerald-300/30 text-xs font-medium cursor-not-allowed bg-black/15 border-l-4 border-transparent pl-2.5"
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-emerald-300/30 text-xs font-medium cursor-not-allowed bg-black/15 border-l-4 border-transparent pl-2.5"
                     title={`Restricted for role: ${activeRole}`}
                   >
-                    <div className="flex items-center gap-2.5 opacity-50 truncate">
+                    <div className="flex items-center gap-2.5 opacity-50 truncate min-w-0">
                       <item.icon className="w-4 h-4 text-emerald-400/40 shrink-0" />
-                      <span className="line-through truncate">{item.label}</span>
+                      <div className="min-w-0 truncate">
+                        <span className="line-through block truncate">{primaryTitle}</span>
+                        <span className="text-[10px] text-emerald-300/30 block truncate">{secondarySubtitle}</span>
+                      </div>
                     </div>
-                    <Lock className="w-3.5 h-3.5 text-emerald-400/40 shrink-0" />
+                    <Lock className="w-3.5 h-3.5 text-emerald-400/40 shrink-0 ml-1" />
                   </div>
                 );
               }
@@ -221,24 +257,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
                 <div key={item.id} className="space-y-0.5">
                   <button
                     onClick={() => handleNav(item.path)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all duration-150 text-left group cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs transition-all duration-150 text-left group cursor-pointer ${
                       isActive
                         ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white font-black shadow-lg shadow-emerald-950/60 border-l-4 border-amber-400 pl-2.5'
                         : 'text-emerald-100/90 hover:bg-white/10 hover:text-white font-bold border-l-4 border-transparent pl-2.5'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <item.icon
                         className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
                           isActive ? 'text-white' : 'text-emerald-400'
                         }`}
                       />
-                      <span className="truncate">{item.label}</span>
+                      <div className="min-w-0 flex-1 leading-tight">
+                        <div className="text-xs font-bold truncate">
+                          {primaryTitle}
+                        </div>
+                        <div
+                          className={`text-[10px] font-normal truncate mt-0.5 ${
+                            isActive ? 'text-emerald-100' : 'text-emerald-300/70 group-hover:text-emerald-200'
+                          }`}
+                        >
+                          {secondarySubtitle}
+                        </div>
+                      </div>
                     </div>
                     {isActive ? (
-                      <ChevronDown className="w-3.5 h-3.5 text-white shrink-0 ml-1" />
+                      <ChevronDown className="w-3.5 h-3.5 text-white shrink-0 ml-1.5" />
                     ) : (
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0 ml-1 transition-transform group-hover:translate-x-0.5" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0 ml-1.5 transition-transform group-hover:translate-x-0.5" />
                     )}
                   </button>
 
@@ -262,7 +309,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                               </span>
-                              <span className="truncate">{sub.label}</span>
+                              <span className="truncate">
+                                {language === 'ta' ? sub.labelTa : sub.labelEn}
+                              </span>
                             </span>
                             <span
                               className={`text-[9px] px-1.5 py-0.2 rounded-full font-black shrink-0 ml-1 ${
@@ -289,7 +338,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
           <div className="px-2 mb-2 flex items-center text-[10px] font-black uppercase tracking-wider text-emerald-400">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-              <span>WORKFORCE & STAFF SUITE</span>
+              <span>{language === 'ta' ? 'பணியாளர் மேலாண்மை' : 'WORKFORCE & STAFF SUITE'}</span>
             </span>
           </div>
 
@@ -298,18 +347,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
               const allowed = hasPermission(item.path);
               const isActive = currentPath === item.path;
 
+              const primaryTitle = language === 'ta' ? item.labelTa : item.labelEn;
+              const secondarySubtitle = language === 'ta' ? item.labelEn : item.labelTa;
+
               if (!allowed) {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-xl text-emerald-300/30 text-xs font-medium cursor-not-allowed bg-black/15 border-l-4 border-transparent pl-2.5"
+                    className="flex items-center justify-between px-3 py-2 rounded-xl text-emerald-300/30 text-xs font-medium cursor-not-allowed bg-black/15 border-l-4 border-transparent pl-2.5"
                     title={`Restricted for role: ${activeRole}`}
                   >
-                    <div className="flex items-center gap-2.5 opacity-50 truncate">
+                    <div className="flex items-center gap-2.5 opacity-50 truncate min-w-0">
                       <item.icon className="w-4 h-4 text-emerald-400/40 shrink-0" />
-                      <span className="line-through truncate">{item.label}</span>
+                      <div className="min-w-0 truncate">
+                        <span className="line-through block truncate">{primaryTitle}</span>
+                        <span className="text-[10px] text-emerald-300/30 block truncate">{secondarySubtitle}</span>
+                      </div>
                     </div>
-                    <Lock className="w-3.5 h-3.5 text-emerald-400/40 shrink-0" />
+                    <Lock className="w-3.5 h-3.5 text-emerald-400/40 shrink-0 ml-1" />
                   </div>
                 );
               }
@@ -318,24 +373,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isOpe
                 <button
                   key={item.id}
                   onClick={() => handleNav(item.path)}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all duration-150 text-left group cursor-pointer ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs transition-all duration-150 text-left group cursor-pointer ${
                     isActive
                       ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white font-black shadow-lg shadow-emerald-950/60 border-l-4 border-amber-400 pl-2.5'
                       : 'text-emerald-100/90 hover:bg-white/10 hover:text-white font-bold border-l-4 border-transparent pl-2.5'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <item.icon
                       className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
                         isActive ? 'text-white' : 'text-emerald-400'
                       }`}
                     />
-                    <span className="truncate">{item.label}</span>
+                    <div className="min-w-0 flex-1 leading-tight">
+                      <div className="text-xs font-bold truncate">
+                        {primaryTitle}
+                      </div>
+                      <div
+                        className={`text-[10px] font-normal truncate mt-0.5 ${
+                          isActive ? 'text-emerald-100' : 'text-emerald-300/70 group-hover:text-emerald-200'
+                        }`}
+                      >
+                        {secondarySubtitle}
+                      </div>
+                    </div>
                   </div>
                   {isActive ? (
-                    <ChevronDown className="w-3.5 h-3.5 text-white shrink-0 ml-1" />
+                    <ChevronDown className="w-3.5 h-3.5 text-white shrink-0 ml-1.5" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0 ml-1 transition-transform group-hover:translate-x-0.5" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0 ml-1.5 transition-transform group-hover:translate-x-0.5" />
                   )}
                 </button>
               );
